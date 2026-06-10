@@ -133,19 +133,28 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 #chartCommuneWrap{position:relative;min-height:300px}
 
 /* ── COMMUNE TABLE ── */
-#communeTable{width:100%;border-collapse:collapse;font-size:11px}
+#communeTable{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
 #communeTable thead th{
   position:sticky;top:0;background:#111d2b;color:#3d5d77;
-  font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;
-  padding:9px 8px;border-bottom:1px solid #253545;font-weight:700
+  font-size:9px;text-transform:uppercase;letter-spacing:.4px;
+  padding:8px 3px;border-bottom:1px solid #253545;font-weight:700;overflow:hidden
 }
-#communeTable td{padding:6px 8px;border-bottom:1px solid #192534;color:#7a9aaa}
+#communeTable td{padding:6px 3px;border-bottom:1px solid #192534;color:#7a9aaa}
 #communeTable tbody tr:hover td{background:#1a2d40;cursor:pointer}
-.td-commune{color:#c0d8e8 !important;font-weight:500}
+/* Largeurs fixes des colonnes numériques — la col. Commune prend le reste */
+#communeTable th:nth-child(2),#communeTable td:nth-child(2){width:37px}
+#communeTable th:nth-child(3),#communeTable td:nth-child(3){width:30px}
+#communeTable th:nth-child(4),#communeTable td:nth-child(4){width:27px}
+#communeTable th:nth-child(5),#communeTable td:nth-child(5){width:28px}
+#communeTable th:nth-child(6),#communeTable td:nth-child(6){width:42px}
+.td-commune{
+  color:#c0d8e8 !important;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
 .td-num{text-align:right !important}
 .pct-badge{
-  display:inline-block;padding:1px 6px;border-radius:3px;
-  font-weight:700;font-size:11px
+  display:inline-block;padding:1px 4px;border-radius:3px;
+  font-weight:700;font-size:10px
 }
 
 /* ── MAP ── */
