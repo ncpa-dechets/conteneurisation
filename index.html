@@ -402,8 +402,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 // ═══════════════════════════════════════════════
 // Nom du fichier Excel dans le même répertoire GitHub que cette page
 const DATA_FILENAME = 'donnees_viacol.xlsx';
-// Mot de passe d'accès aux données GitHub (protection simple, visible dans le source)
-const ACCESS_PWD = 'Ncp@2026déchets';
+// Hash SHA-256 du mot de passe d'accès (le mot de passe lui-même n'est pas stocké ici)
+const ACCESS_PWD_HASH = '2de700850296cf13fbe39a5be133a5e0a8c5a2cfbfd7c3d712f60fee6584c875';
 
 // ═══════════════════════════════════════════════
 // MODAL DE DÉMARRAGE
@@ -439,10 +439,17 @@ document.getElementById('smcLocal').addEventListener('click', () => {
   document.getElementById('fileInput').click();
 });
 
+// Calcule le hash SHA-256 d'une chaîne (Web Crypto API)
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 // Soumission mot de passe
 async function checkPwdAndLoad() {
   const pwd = document.getElementById('smPwdInput').value;
-  if (pwd !== ACCESS_PWD) {
+  const hash = await sha256(pwd);
+  if (hash !== ACCESS_PWD_HASH) {
     document.getElementById('smPwdErr').textContent = '❌ Mot de passe incorrect';
     document.getElementById('smPwdInput').select();
     return;
