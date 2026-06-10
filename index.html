@@ -186,6 +186,60 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 }
 .leaflet-control-zoom a:hover{background:#253545 !important}
 .leaflet-bar{border:none !important}
+
+/* ── STARTUP MODAL ── */
+#startModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.97);
+  display:flex;align-items:center;justify-content:center;
+}
+#startModal.gone{display:none}
+.sm-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:12px;
+  padding:36px 30px 24px;width:500px;max-width:95vw;
+  box-shadow:0 24px 64px rgba(0,0,0,.6)
+}
+.sm-head{text-align:center;margin-bottom:28px}
+.sm-badge2{
+  display:inline-block;background:#B91E27;color:#fff;
+  font-size:12px;font-weight:800;letter-spacing:2px;
+  padding:4px 10px;border-radius:3px;margin-bottom:14px
+}
+.sm-head h2{color:#e0eaf2;font-size:20px;font-weight:600;margin-bottom:6px}
+.sm-head p{color:#4d6880;font-size:12.5px}
+.sm-cards{display:flex;gap:12px}
+.sm-card{
+  flex:1;background:#111d2b;border:1.5px solid #253545;
+  border-radius:8px;padding:22px 16px 18px;cursor:pointer;
+  transition:border-color .15s,background .15s;
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:8px
+}
+.sm-card:hover{border-color:#3d5d77;background:#1a2d40}
+.sm-card.sm-active{border-color:#B91E27 !important;background:#1a2535 !important}
+.sm-icon{font-size:34px;line-height:1;margin-bottom:2px}
+.sm-title{color:#c0d8e8;font-size:14px;font-weight:600}
+.sm-desc{color:#4d6880;font-size:11px;line-height:1.55}
+.sm-pwd{margin-top:10px;width:100%;text-align:left}
+.sm-pwd-row{display:flex;gap:6px;margin-bottom:5px}
+.sm-pwd-row input{
+  flex:1;background:#0d1824;color:#c0d8e8;border:1px solid #3d5d77;
+  border-radius:4px;padding:8px 10px;font-size:12px;outline:none;
+  font-family:inherit;min-width:0
+}
+.sm-pwd-row input:focus{border-color:#B91E27}
+.sm-pwd-row button{
+  background:#B91E27;color:#fff;border:none;border-radius:4px;
+  padding:8px 14px;cursor:pointer;font-size:14px;font-weight:700;
+  font-family:inherit;transition:background .15s;white-space:nowrap
+}
+.sm-pwd-row button:hover{background:#9a1820}
+.sm-err{color:#e74c3c;font-size:11px;min-height:15px}
+.sm-foot{
+  text-align:center;margin-top:20px;padding-top:16px;
+  border-top:1px solid #253545;font-size:10px;color:#2d4055
+}
+.sm-esc-hint{color:#3d5d77;font-size:10.5px}
 </style>
 </head>
 <body>
@@ -202,13 +256,51 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     <h1>Suivi Conteneurisation</h1>
     <span id="dataInfo"></span>
   </div>
-  <button id="btnImport" onclick="document.getElementById('fileInput').click()">
+  <button id="btnImport" onclick="openModal()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
       <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
-    Importer VIACOL (.xlsx)
+    Charger les données
   </button>
+</div>
+
+<!-- ── STARTUP MODAL ── -->
+<div id="startModal">
+  <div class="sm-inner">
+    <div class="sm-head">
+      <div class="sm-badge2">NCPA</div>
+      <h2>Suivi Conteneurisation</h2>
+      <p>Choisissez la source des données VIACOL</p>
+    </div>
+    <div class="sm-cards">
+
+      <!-- Carte GitHub -->
+      <div class="sm-card" id="smcGithub">
+        <div class="sm-icon">🌐</div>
+        <div class="sm-title">Dernières données actualisées</div>
+        <div class="sm-desc">Charger l'export le plus récent<br>depuis le dépôt</div>
+        <div class="sm-pwd" id="smPwdSection" style="display:none">
+          <div class="sm-pwd-row">
+            <input type="password" id="smPwdInput" placeholder="Mot de passe…" autocomplete="off">
+            <button id="smBtnPwd">↵</button>
+          </div>
+          <div class="sm-err" id="smPwdErr"></div>
+        </div>
+      </div>
+
+      <!-- Carte fichier local -->
+      <div class="sm-card" id="smcLocal">
+        <div class="sm-icon">📂</div>
+        <div class="sm-title">Fichier local</div>
+        <div class="sm-desc">Importer un export .xlsx<br>depuis votre ordinateur</div>
+      </div>
+
+    </div>
+    <div class="sm-foot">
+      <span class="sm-esc-hint" id="smEscHint" style="display:none">Appuyez sur Échap pour fermer sans recharger</span>
+    </div>
+  </div>
 </div>
 
 <div id="app">
@@ -286,8 +378,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     <div id="emptyState">
       <div class="empty-icon">🗺️</div>
       <p>Importez un export VIACOL pour visualiser les données du territoire</p>
-      <button class="btn-empty" onclick="document.getElementById('fileInput').click()">
-        Importer un fichier .xlsx
+      <button class="btn-empty" onclick="openModal()">
+        Charger les données
       </button>
     </div>
   </div>
@@ -297,8 +389,114 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 'use strict';
 
 // ═══════════════════════════════════════════════
-// CONSTANTES
+// ⚙️  CONFIGURATION — à adapter selon le dépôt
 // ═══════════════════════════════════════════════
+// Nom du fichier Excel dans le même répertoire GitHub que cette page
+const DATA_FILENAME = 'donnees_viacol.xlsx';
+// Mot de passe d'accès aux données GitHub (protection simple, visible dans le source)
+const ACCESS_PWD = 'conteneuris@tion2026';
+
+// ═══════════════════════════════════════════════
+// MODAL DE DÉMARRAGE
+// ═══════════════════════════════════════════════
+function openModal() {
+  const modal = document.getElementById('startModal');
+  modal.classList.remove('gone');
+  // Hint Échap visible seulement si des données sont déjà chargées
+  document.getElementById('smEscHint').style.display = allRows.length > 0 ? '' : 'none';
+  // Réinitialiser l'état de la carte GitHub
+  document.getElementById('smPwdSection').style.display = 'none';
+  document.getElementById('smcGithub').classList.remove('sm-active');
+  document.getElementById('smcLocal').classList.remove('sm-active');
+  document.getElementById('smPwdInput').value = '';
+  document.getElementById('smPwdErr').textContent = '';
+}
+
+function closeModal() {
+  document.getElementById('startModal').classList.add('gone');
+}
+
+// Clic sur carte GitHub → afficher champ mot de passe
+document.getElementById('smcGithub').addEventListener('click', () => {
+  document.getElementById('smcGithub').classList.add('sm-active');
+  document.getElementById('smcLocal').classList.remove('sm-active');
+  document.getElementById('smPwdSection').style.display = '';
+  setTimeout(() => document.getElementById('smPwdInput').focus(), 50);
+});
+
+// Clic sur carte fichier local → déclencher le sélecteur de fichier
+document.getElementById('smcLocal').addEventListener('click', () => {
+  document.getElementById('smcLocal').classList.add('sm-active');
+  document.getElementById('fileInput').click();
+});
+
+// Soumission mot de passe
+async function checkPwdAndLoad() {
+  const pwd = document.getElementById('smPwdInput').value;
+  if (pwd !== ACCESS_PWD) {
+    document.getElementById('smPwdErr').textContent = '❌ Mot de passe incorrect';
+    document.getElementById('smPwdInput').select();
+    return;
+  }
+  document.getElementById('smPwdErr').textContent = '';
+  closeModal();
+  await loadFromGitHub();
+}
+
+document.getElementById('smBtnPwd').addEventListener('click', checkPwdAndLoad);
+document.getElementById('smPwdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPwdAndLoad();
+  if (e.key === 'Escape') e.stopPropagation(); // Ne pas fermer le modal en tapant Échap dans le champ
+});
+
+// Fermer sur Échap (seulement si des données sont déjà chargées)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && allRows.length > 0) closeModal();
+});
+
+// ═══════════════════════════════════════════════
+// CHARGEMENT DEPUIS GITHUB
+// ═══════════════════════════════════════════════
+async function loadFromGitHub() {
+  // Construit l'URL relative au répertoire de la page courante
+  const pageBase = window.location.href.replace(/\/[^/?#]*(\?[^#]*)?(\#.*)?$/, '/');
+  const fileUrl  = pageBase + DATA_FILENAME;
+
+  showLoading('Téléchargement depuis GitHub…');
+  try {
+    const resp = await fetch(fileUrl);
+    if (!resp.ok) {
+      throw new Error(`Erreur HTTP ${resp.status} — ${resp.statusText}\n(${fileUrl})`);
+    }
+
+    showLoading('Lecture du fichier Excel…');
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type:'array', cellDates:true });
+
+    if (!wb.SheetNames.includes('DONNEES_VIACOL')) {
+      hideLoading();
+      alert('Onglet "DONNEES_VIACOL" introuvable dans le fichier distant.\n'
+        + 'Onglets présents : ' + wb.SheetNames.join(', '));
+      openModal();
+      return;
+    }
+
+    showLoading('Traitement des données…');
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['DONNEES_VIACOL'], { defval:'' });
+
+    setTimeout(() => {
+      processData(rows, DATA_FILENAME + ' (GitHub)');
+      hideLoading();
+    }, 50);
+
+  } catch (err) {
+    hideLoading();
+    alert('Impossible de charger le fichier depuis GitHub :\n\n' + err.message
+      + '\n\nVérifiez que le fichier "' + DATA_FILENAME + '" est bien présent dans le dépôt '
+      + 'au même niveau que cette page.');
+    openModal();
+  }
+}
 const CATS = ['livre','enquete','rouge','bleu','non_traite'];
 
 const COLORS = {
@@ -731,6 +929,7 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
 
+  closeModal(); // Fermer le modal dès qu'un fichier est sélectionné
   showLoading('Lecture du fichier Excel…');
 
   const reader = new FileReader();
@@ -776,6 +975,7 @@ function hideLoading() {
 // INITIALISATION
 // ═══════════════════════════════════════════════
 buildLayerList();
+openModal(); // Afficher le modal de démarrage
 </script>
 </body>
 </html>
