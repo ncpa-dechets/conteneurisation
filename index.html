@@ -536,6 +536,28 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════
 // CHARGEMENT DEPUIS GITHUB
 // ═══════════════════════════════════════════════
+async function fetchGitHubFileDate() {
+  try {
+    const host  = window.location.hostname; // ex: ncpa-dechets.github.io
+    const parts = host.split('.');
+    if (parts.length < 3 || parts[1] !== 'github') return null;
+    const owner = parts[0];
+    const repo  = window.location.pathname.split('/').filter(Boolean)[0];
+    if (!owner || !repo) return null;
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(DATA_FILENAME)}&per_page=1`;
+    const resp = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    if (!Array.isArray(data) || !data.length) return null;
+
+    return new Date(data[0].commit.committer.date);
+  } catch {
+    return null;
+  }
+}
+
 async function loadFromGitHub() {
   // Construit l'URL relative au répertoire de la page courante
   const pageBase = window.location.href.replace(/\/[^/?#]*(\?[^#]*)?(\#.*)?$/, '/');
@@ -543,7 +565,11 @@ async function loadFromGitHub() {
 
   showLoading('Téléchargement depuis GitHub…');
   try {
-    const resp = await fetch(fileUrl);
+    const [resp, fileDate] = await Promise.all([
+      fetch(fileUrl),
+      fetchGitHubFileDate()
+    ]);
+
     if (!resp.ok) {
       throw new Error(`Erreur HTTP ${resp.status} — ${resp.statusText}\n(${fileUrl})`);
     }
@@ -564,7 +590,7 @@ async function loadFromGitHub() {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets['DONNEES_VIACOL'], { defval:'' });
 
     setTimeout(() => {
-      processData(rows, DATA_FILENAME + ' (GitHub)');
+      processData(rows, DATA_FILENAME + ' (GitHub)', fileDate);
       hideLoading();
     }, 50);
 
@@ -722,7 +748,7 @@ function rebuildMarkers() {
 // ═══════════════════════════════════════════════
 // TRAITEMENT DES DONNÉES
 // ═══════════════════════════════════════════════
-function processData(rows, fname) {
+function processData(rows, fname, fileDate) {
   allRows        = rows;
   currentCommune = '';
 
@@ -764,9 +790,11 @@ function processData(rows, fname) {
   document.getElementById('importInfo').textContent =
     `${fname}  ·  ${rows.length.toLocaleString('fr-FR')} adresses  ·  ${communes.size} communes`;
 
-  const now = new Date();
-  document.getElementById('dataInfo').textContent =
-    `Importé le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  const displayDate = fileDate instanceof Date && !isNaN(fileDate) ? fileDate : new Date();
+  const isFileDate  = fileDate instanceof Date && !isNaN(fileDate);
+  document.getElementById('dataInfo').textContent = isFileDate
+    ? `Données du ${displayDate.toLocaleDateString('fr-FR')}`
+    : `Importé le ${displayDate.toLocaleDateString('fr-FR')} à ${displayDate.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
 }
 
 // ═══════════════════════════════════════════════
@@ -1025,9 +1053,10 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
 
       showLoading('Traitement de ' + file.name + '…');
       const rows = XLSX.utils.sheet_to_json(wb.Sheets['DONNEES_VIACOL'], { defval:'' });
+      const localDate = file.lastModified ? new Date(file.lastModified) : null;
 
       setTimeout(() => {
-        processData(rows, file.name);
+        processData(rows, file.name, localDate);
         hideLoading();
       }, 50);
     } catch (err) {
