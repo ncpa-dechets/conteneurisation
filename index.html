@@ -42,6 +42,79 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   transition:background .15s,color .15s,border-color .15s
 }
 #btnImport:hover{background:#B91E27;color:#fff;border-color:#B91E27}
+.hdr-actions{display:flex;align-items:center;gap:8px}
+#btnExport{
+  display:none;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(52,152,219,.5);color:#7ab8d8;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnExport.show{display:flex}
+#btnExport:hover{background:#2980b9;color:#fff;border-color:#2980b9}
+
+/* ── EXPORT MODAL ── */
+#exportModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.82);
+  display:flex;align-items:center;justify-content:center
+}
+#exportModal.gone{display:none}
+.exp-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:10px;
+  padding:28px 26px 22px;width:400px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)
+}
+.exp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.exp-head h3{color:#e0eaf2;font-size:16px;font-weight:600}
+.exp-close{
+  background:none;border:none;color:#4d6880;font-size:20px;cursor:pointer;
+  line-height:1;padding:2px 6px;border-radius:3px;transition:color .15s
+}
+.exp-close:hover{color:#c0d8e8}
+.exp-section{margin-bottom:16px}
+.exp-section-lbl{
+  font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin-bottom:10px;display:block
+}
+.exp-context{
+  background:#111d2b;border:1px solid #1a2535;border-radius:5px;
+  padding:8px 12px;font-size:11.5px;color:#7a9aaa;margin-bottom:14px
+}
+.exp-context span{color:#B1B993;font-weight:600}
+.exp-checks{display:flex;flex-direction:column;gap:6px}
+.exp-check-row{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 10px;border-radius:5px;background:#111d2b;
+  cursor:pointer;user-select:none;transition:background .12s
+}
+.exp-check-row:hover{background:#1a2d40}
+.exp-check-row input[type=checkbox]{
+  accent-color:#3498db;width:14px;height:14px;cursor:pointer;flex-shrink:0
+}
+.exp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.exp-check-lbl{flex:1;font-size:12px;color:#c0d8e8}
+.exp-check-cnt{font-size:10.5px;color:#4d6880;font-weight:600}
+.exp-all-row{
+  display:flex;align-items:center;gap:9px;padding:6px 10px;
+  cursor:pointer;user-select:none;margin-bottom:4px
+}
+.exp-all-row input[type=checkbox]{accent-color:#7a9aaa;width:13px;height:13px;cursor:pointer}
+.exp-all-lbl{font-size:11px;color:#4d6880}
+.exp-format{display:flex;gap:8px;margin-bottom:18px}
+.exp-fmt-btn{
+  flex:1;padding:8px;border-radius:5px;border:1.5px solid #253545;
+  background:#111d2b;color:#7a9aaa;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:all .15s;text-align:center
+}
+.exp-fmt-btn.active{border-color:#3498db;color:#7ab8d8;background:#0e1e2e}
+.exp-submit{
+  width:100%;padding:11px;border-radius:5px;border:none;
+  background:#B91E27;color:#fff;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:background .15s
+}
+.exp-submit:hover{background:#9a1820}
+.exp-submit:disabled{background:#2d4055;color:#4d6880;cursor:default}
 
 /* ── MAIN LAYOUT ── */
 #app{display:flex;height:calc(100vh - 50px);overflow:hidden}
@@ -315,13 +388,22 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     <h1>Suivi Conteneurisation</h1>
     <span id="dataInfo"></span>
   </div>
-  <button id="btnImport" onclick="openModal()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-    </svg>
-    Charger les données
-  </button>
+  <div class="hdr-actions">
+    <button id="btnExport" onclick="openExportModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Exporter
+    </button>
+    <button id="btnImport" onclick="openModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Charger les données
+    </button>
+  </div>
 </div>
 
 <!-- ── STARTUP MODAL ── -->
@@ -359,6 +441,40 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     <div class="sm-foot">
       <span class="sm-esc-hint" id="smEscHint" style="display:none">Appuyez sur Échap pour fermer sans recharger</span>
     </div>
+  </div>
+</div>
+
+<!-- ── EXPORT MODAL ── -->
+<div id="exportModal" class="gone">
+  <div class="exp-inner">
+    <div class="exp-head">
+      <h3>Exporter les données</h3>
+      <button class="exp-close" onclick="closeExportModal()" title="Fermer">×</button>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Périmètre</span>
+      <div class="exp-context" id="expContext">—</div>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Catégories à inclure</span>
+      <label class="exp-all-row">
+        <input type="checkbox" id="expChkAll" checked onchange="toggleAllExportCats(this.checked)">
+        <span class="exp-all-lbl">Tout sélectionner / désélectionner</span>
+      </label>
+      <div class="exp-checks" id="expChecks"></div>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Format</span>
+      <div class="exp-format">
+        <button class="exp-fmt-btn active" id="expFmtCsv" onclick="setExportFmt('csv')">CSV</button>
+        <button class="exp-fmt-btn" id="expFmtXlsx" onclick="setExportFmt('xlsx')">Excel (.xlsx)</button>
+      </div>
+    </div>
+
+    <button class="exp-submit" id="expSubmit" onclick="doExport()">Télécharger</button>
   </div>
 </div>
 
@@ -787,6 +903,7 @@ function processData(rows, fname, fileDate) {
   rebuildMarkers();
 
   document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('btnExport').classList.add('show');
   document.getElementById('importInfo').textContent =
     `${fname}  ·  ${rows.length.toLocaleString('fr-FR')} adresses  ·  ${communes.size} communes`;
 
@@ -1250,6 +1367,132 @@ function hideLoading() {
   observer.observe(document.getElementById('emptyState'), { attributes: true, attributeFilter: ['style'] });
   document.getElementById('geocoderControl').style.display = 'none'; // caché par défaut
 })();
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+let exportFmt = 'csv';
+
+function openExportModal() {
+  if (!allRows.length) return;
+
+  // Contexte périmètre
+  const commune = currentCommune;
+  const rows = commune
+    ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+    : allRows;
+  const ctxEl = document.getElementById('expContext');
+  ctxEl.innerHTML = commune
+    ? `Commune filtrée : <span>${commune}</span> — <span>${rows.length.toLocaleString('fr-FR')}</span> adresses`
+    : `Toutes les communes — <span>${rows.length.toLocaleString('fr-FR')}</span> adresses`;
+
+  // Construire les checkboxes
+  const container = document.getElementById('expChecks');
+  container.innerHTML = '';
+  CATS.forEach(c => {
+    const count = rows.filter(r => categorize(r) === c).length;
+    const label = document.createElement('label');
+    label.className = 'exp-check-row';
+    label.innerHTML =
+      `<input type="checkbox" data-cat="${c}" checked>
+       <span class="exp-dot" style="background:${COLORS[c]}"></span>
+       <span class="exp-check-lbl">${LABELS[c]}</span>
+       <span class="exp-check-cnt">${count.toLocaleString('fr-FR')}</span>`;
+    label.querySelector('input').addEventListener('change', syncExpAllCheckbox);
+    container.appendChild(label);
+  });
+
+  document.getElementById('expChkAll').checked = true;
+  updateExportSubmitState();
+  document.getElementById('exportModal').classList.remove('gone');
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').classList.add('gone');
+}
+
+function toggleAllExportCats(checked) {
+  document.querySelectorAll('#expChecks input[type=checkbox]').forEach(cb => {
+    cb.checked = checked;
+  });
+  updateExportSubmitState();
+}
+
+function syncExpAllCheckbox() {
+  const all  = document.querySelectorAll('#expChecks input[type=checkbox]');
+  const checked = [...all].filter(cb => cb.checked);
+  document.getElementById('expChkAll').checked = checked.length === all.length;
+  document.getElementById('expChkAll').indeterminate = checked.length > 0 && checked.length < all.length;
+  updateExportSubmitState();
+}
+
+function updateExportSubmitState() {
+  const any = [...document.querySelectorAll('#expChecks input[type=checkbox]')].some(cb => cb.checked);
+  document.getElementById('expSubmit').disabled = !any;
+}
+
+function setExportFmt(fmt) {
+  exportFmt = fmt;
+  document.getElementById('expFmtCsv').classList.toggle('active',  fmt === 'csv');
+  document.getElementById('expFmtXlsx').classList.toggle('active', fmt === 'xlsx');
+}
+
+function doExport() {
+  const selectedCats = new Set(
+    [...document.querySelectorAll('#expChecks input[type=checkbox]')]
+      .filter(cb => cb.checked).map(cb => cb.dataset.cat)
+  );
+
+  const commune = currentCommune;
+  let rows = commune
+    ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+    : allRows;
+  rows = rows.filter(r => selectedCats.has(categorize(r)));
+
+  if (!rows.length) { alert('Aucune adresse à exporter avec ces filtres.'); return; }
+
+  // Ajouter une colonne CATEGORIE calculée
+  const enriched = rows.map(r => ({ ...r, CATEGORIE: LABELS[categorize(r)] }));
+
+  const datePart = new Date().toISOString().slice(0,10);
+  const commPart = commune ? '_' + commune.replace(/\s+/g,'_') : '';
+  const basename = `export_viacol${commPart}_${datePart}`;
+
+  if (exportFmt === 'xlsx') {
+    const ws = XLSX.utils.json_to_sheet(enriched);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Export');
+    XLSX.writeFile(wb, basename + '.xlsx');
+  } else {
+    // CSV UTF-8 avec BOM pour Excel
+    if (!enriched.length) return;
+    const cols = Object.keys(enriched[0]);
+    const escape = v => {
+      const s = (v instanceof Date) ? v.toLocaleDateString('fr-FR') : String(v ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [cols.join(','), ...enriched.map(r => cols.map(c => escape(r[c])).join(','))];
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = basename + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  closeExportModal();
+}
+
+// Fermer le modal export sur Échap
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('exportModal').classList.contains('gone')) {
+    closeExportModal();
+  }
+});
+document.getElementById('exportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('exportModal')) closeExportModal();
+});
 
 // ═══════════════════════════════════════════════
 // INITIALISATION
