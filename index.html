@@ -646,7 +646,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   </div>
   <div class="kpi kpi-pct">
     <span class="kpi-val" id="kpiPct">—</span>
-    <span class="kpi-lbl">Avancement de la pose</span>
+    <span class="kpi-lbl">Avancement de la pose <span class="kpi-sub">hors non livrables</span></span>
   </div>
   <div class="kpi kpi-traiter">
     <span class="kpi-val" id="kpiTraiter">—</span>
@@ -931,7 +931,7 @@ const DESCS = {
   enquete:    'Adresse enquêtée, en attente de pose',
   rouge:      'Adresse non équipable (accès, local…)',
   bleu:       'Pose reportée (temporisée)',
-  non_traite: 'Pas encore enquêtée'
+  non_traite: 'Enquête non retournée'
 };
 // Descriptions détaillées (modale « Comprendre la carte »)
 const HELP_DESCS = {
@@ -939,7 +939,7 @@ const HELP_DESCS = {
   enquete:    'L\'adresse a été visitée (enquête réalisée) mais les bacs ne sont pas encore posés. La livraison reste à programmer.',
   rouge:      'Adresse qui ne peut pas être équipée en l\'état : problème d\'accès, absence de local, copropriété à organiser, etc. Une action est nécessaire.',
   bleu:       'Pose volontairement reportée (travaux en cours, situation particulière à régler avant de livrer).',
-  non_traite: 'Adresse pour laquelle aucune enquête de terrain n\'a encore eu lieu.'
+  non_traite: 'Adresse n\'ayant pas donné de réponse à l\'enquête de dotation.'
 };
 const DEFAULT_VISIBLE = {
   livre:true, enquete:true, rouge:true, bleu:true, non_traite:false
@@ -1046,14 +1046,27 @@ function buildPointTip(row) {
   return tip;
 }
 
+// Base "livrable" servant au calcul de l'avancement : on EXCLUT les adresses
+// non livrables (rouge), qui ne peuvent pas être équipées en l'état. Les
+// temporisées (bleu) restent comptées car la pose y est seulement reportée.
+function baseLivrable(s) {
+  return Math.max(0, (s.total || 0) - (s.rouge || 0));
+}
+// Pourcentage d'avancement de la pose, calculé sur la base livrable.
+function avancementPct(s) {
+  const base = baseLivrable(s);
+  return base > 0 ? Math.round((s.livre || 0) / base * 100) : 0;
+}
+
 // Chiffres clés calculés sur un objet de stats (globalStats ou communeStats[commune]).
 function kpis(scope) {
   const s = scope || {};
   const total    = s.total || 0;
   const posees    = s.livre || 0;
   const aTraiter  = (s.rouge || 0) + (s.bleu || 0);
-  const pct       = total > 0 ? Math.round(posees / total * 100) : 0;
-  return { posees, total, pct, aTraiter };
+  const base      = baseLivrable(s);          // total hors non livrables
+  const pct       = avancementPct(s);         // avancement sur la base livrable
+  return { posees, total, base, pct, aTraiter };
 }
 
 // ═══════════════════════════════════════════════
@@ -1162,11 +1175,12 @@ function updateLayerCounts(commune) {
 
 function updateProgress(commune) {
   const s = commune ? (communeStats[commune] || {livre:0,total:0}) : globalStats;
-  const pct = s.total > 0 ? Math.round(s.livre / s.total * 100) : 0;
+  const base = baseLivrable(s);                 // hors non livrables
+  const pct  = avancementPct(s);
   document.getElementById('progressSec').style.display = '';
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressCount').textContent =
-    `${(s.livre||0).toLocaleString('fr-FR')} / ${(s.total||0).toLocaleString('fr-FR')} livrées`;
+    `${(s.livre||0).toLocaleString('fr-FR')} / ${base.toLocaleString('fr-FR')} livrables`;
   document.getElementById('progressPct').textContent = pct + '%';
 }
 
@@ -1235,7 +1249,7 @@ function buildCommuneReport(commune) {
      </div>
      <div class="pr-kpis">
        <div class="pr-kpi"><span class="pr-kpi-val">${k.posees.toLocaleString('fr-FR')} / ${k.total.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses équipées</span></div>
-       <div class="pr-kpi"><span class="pr-kpi-val">${k.pct}%</span><span class="pr-kpi-lbl">Avancement de la pose</span></div>
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.pct}%</span><span class="pr-kpi-lbl">Avancement de la pose (hors non livrables)</span></div>
        <div class="pr-kpi"><span class="pr-kpi-val">${k.aTraiter.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses à traiter</span></div>
      </div>
      <div class="pr-chart-block">
@@ -1414,7 +1428,7 @@ function buildCommuneTable() {
 
   sorted.forEach(commune => {
     const s   = communeStats[commune];
-    const pct = s.total > 0 ? Math.round(s.livre / s.total * 100) : 0;
+    const pct = avancementPct(s);   // avancement hors non livrables
     const pctColor  = pct >= 80 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c';
     const pctBg     = pct >= 80 ? 'rgba(39,174,96,.15)' : pct >= 50 ? 'rgba(243,156,18,.15)' : 'rgba(231,76,60,.15)';
 
