@@ -43,6 +43,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 }
 #btnImport:hover{background:#B91E27;color:#fff;border-color:#B91E27}
 .hdr-actions{display:flex;align-items:center;gap:8px}
+#btnHelp{
+  display:flex;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(177,185,147,.4);color:#B1B993;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnHelp:hover{background:#B1B993;color:#0d1824;border-color:#B1B993}
 #btnExport{
   display:none;align-items:center;gap:7px;background:none;
   border:1.5px solid rgba(52,152,219,.5);color:#7ab8d8;
@@ -116,8 +124,64 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 .exp-submit:hover{background:#9a1820}
 .exp-submit:disabled{background:#2d4055;color:#4d6880;cursor:default}
 
+/* ── HELP MODAL ── */
+#helpModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.82);
+  display:flex;align-items:center;justify-content:center
+}
+#helpModal.gone{display:none}
+.help-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:10px;
+  padding:26px 26px 22px;width:520px;max-width:95vw;max-height:88vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)
+}
+.help-inner::-webkit-scrollbar{width:6px}
+.help-inner::-webkit-scrollbar-thumb{background:#253545;border-radius:3px}
+.help-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.help-head h3{color:#e0eaf2;font-size:16px;font-weight:600}
+.help-intro{color:#7a9aaa;font-size:12px;line-height:1.5;margin-bottom:18px}
+.help-sub{
+  font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin:18px 0 10px;display:block
+}
+.help-cat{
+  display:flex;gap:11px;align-items:flex-start;
+  padding:9px 12px;border-radius:6px;background:#111d2b;margin-bottom:7px
+}
+.help-cat-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.help-cat-txt{flex:1}
+.help-cat-name{display:block;font-size:12.5px;color:#c0d8e8;font-weight:600;margin-bottom:2px}
+.help-cat-desc{display:block;font-size:11.5px;color:#7a9aaa;line-height:1.45}
+.help-gloss{display:flex;flex-direction:column;gap:5px}
+.help-gloss-row{
+  display:flex;gap:10px;padding:7px 12px;border-radius:5px;
+  background:#111d2b;font-size:11.5px;line-height:1.4
+}
+.help-gloss-term{color:#B1B993;font-weight:700;min-width:88px;flex-shrink:0}
+.help-gloss-def{color:#9ab8cc}
+
+/* ── DASHBOARD BAND ── */
+#dashboard{
+  height:64px;flex-shrink:0;background:#101c29;
+  border-bottom:1px solid #253545;
+  display:flex;align-items:stretch
+}
+.kpi{
+  flex:1;display:flex;flex-direction:column;justify-content:center;
+  padding:0 20px;border-right:1px solid #1a2535;min-width:0;gap:3px
+}
+.kpi:last-child{border-right:none}
+.kpi-val{font-size:21px;font-weight:800;line-height:1;color:#e0eaf2;letter-spacing:.3px}
+.kpi-lbl{font-size:11px;color:#7a9aaa;font-weight:600;line-height:1.25}
+.kpi-sub{display:block;font-size:9.5px;color:#4d6880;font-weight:500}
+.kpi-posees .kpi-val{color:#2ecc71}
+.kpi-pct .kpi-val{color:#2ecc71}
+.kpi-traiter .kpi-val{color:#e74c3c}
+.kpi-date .kpi-val{font-size:14px;color:#B1B993;font-weight:700}
+
 /* ── MAIN LAYOUT ── */
-#app{display:flex;height:calc(100vh - 50px);overflow:hidden}
+#app{display:flex;height:calc(100vh - 50px - 64px);overflow:hidden}
 
 /* ── SIDEBAR ── */
 #sidebar{
@@ -166,6 +230,15 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   padding:4px 10px;border-radius:3px;margin-top:6px;display:none
 }
 .filter-badge.show{display:block}
+#btnPrintReport{
+  display:none;width:100%;margin-top:8px;
+  align-items:center;justify-content:center;gap:7px;
+  background:none;border:1.5px solid rgba(177,185,147,.4);color:#B1B993;
+  padding:8px 12px;border-radius:4px;cursor:pointer;
+  font-size:11.5px;font-weight:600;font-family:inherit;transition:all .15s
+}
+#btnPrintReport.show{display:flex}
+#btnPrintReport:hover{background:#B1B993;color:#0d1824;border-color:#B1B993}
 
 /* ── LAYER ITEMS ── */
 .layer-item{
@@ -297,6 +370,15 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 .gc-item-main{font-weight:500;color:#c0d8e8}
 .gc-item-sub{font-size:10.5px;color:#4d6880;margin-top:1px}
 .gc-item-notfound{padding:9px 12px;font-size:11.5px;color:#4d6880;text-align:center}
+.gc-group{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+  color:#3d5d77;padding:7px 12px 4px;background:#111d2b;
+  border-bottom:1px solid #1a2535
+}
+.gc-item-status{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.25)
+}
 #geocoderMarker{pointer-events:none}
 
 /* ── LEAFLET OVERRIDES ── */
@@ -318,6 +400,21 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 }
 .leaflet-control-zoom a:hover{background:#253545 !important}
 .leaflet-bar{border:none !important}
+
+/* ── LÉGENDE SUR LA CARTE ── */
+.map-legend{
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  padding:9px 12px;box-shadow:0 3px 14px rgba(0,0,0,.35);
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif
+}
+.map-legend-title{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#3d5d77;margin-bottom:7px
+}
+.map-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.map-legend-row:last-child{margin-bottom:0}
+.map-legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.25)}
+.map-legend-lbl{font-size:11px;color:#c0d8e8}
 
 /* ── STARTUP MODAL ── */
 #startModal{
@@ -372,6 +469,34 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   border-top:1px solid #253545;font-size:10px;color:#2d4055
 }
 .sm-esc-hint{color:#3d5d77;font-size:10.5px}
+
+/* ── FICHE COMMUNE IMPRIMABLE ── */
+#printReport{display:none}
+@media print{
+  #header,#dashboard,#app,#startModal,#exportModal,#helpModal,#loadingOverlay{display:none !important}
+  html,body{height:auto;overflow:visible;background:#fff;font-size:12px}
+  #printReport{display:block;color:#1a2535}
+  .pr-head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #B91E27;padding-bottom:12px;margin-bottom:18px}
+  .pr-badge{background:#B91E27;color:#fff;font-weight:800;letter-spacing:1.5px;padding:6px 11px;border-radius:3px;font-size:13px}
+  .pr-title{font-size:18px;font-weight:700;color:#0d1824}
+  .pr-date{font-size:12px;color:#666;margin-top:2px}
+  .pr-kpis{display:flex;gap:14px;margin-bottom:18px}
+  .pr-kpi{flex:1;border:1px solid #ddd;border-radius:6px;padding:10px 14px;text-align:center}
+  .pr-kpi-val{display:block;font-size:20px;font-weight:800;color:#0d1824}
+  .pr-kpi-lbl{display:block;font-size:11px;color:#666;margin-top:3px}
+  .pr-chart-block{display:flex;align-items:center;gap:28px;margin-bottom:18px}
+  .pr-chart{width:190px;height:190px;flex-shrink:0}
+  .pr-legend{font-size:12px;line-height:1.95}
+  .pr-leg-dot,.pr-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .pr-list-title{font-size:13px;font-weight:700;color:#0d1824;margin-bottom:8px;border-bottom:1px solid #ccc;padding-bottom:5px}
+  .pr-table{width:100%;border-collapse:collapse;font-size:11px}
+  .pr-table th{text-align:left;color:#666;border-bottom:1.5px solid #999;padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+  .pr-table td{padding:5px 6px;border-bottom:1px solid #eee;color:#222;vertical-align:top}
+  .pr-table tr{page-break-inside:avoid}
+  .pr-empty{text-align:center;color:#27ae60;padding:14px}
+  .pr-foot{margin-top:22px;font-size:10px;color:#999;text-align:center}
+  @page{margin:1.4cm}
+}
 </style>
 </head>
 <body>
@@ -389,6 +514,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     <span id="dataInfo"></span>
   </div>
   <div class="hdr-actions">
+    <button id="btnHelp" onclick="openHelpModal()" title="Comprendre la carte">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Comprendre la carte
+    </button>
     <button id="btnExport" onclick="openExportModal()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -478,6 +611,53 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   </div>
 </div>
 
+<!-- ── HELP MODAL ── -->
+<div id="helpModal" class="gone">
+  <div class="help-inner">
+    <div class="help-head">
+      <h3>Comprendre la carte</h3>
+      <button class="exp-close" onclick="closeHelpModal()" title="Fermer">×</button>
+    </div>
+    <p class="help-intro">
+      Chaque point de la carte représente une adresse. Sa couleur indique où en est
+      la pose des bacs à cette adresse.
+    </p>
+
+    <span class="help-sub">Que signifient les couleurs ?</span>
+    <div id="helpCats"></div>
+
+    <span class="help-sub">Petit glossaire</span>
+    <div class="help-gloss">
+      <div class="help-gloss-row"><span class="help-gloss-term">OM</span><span class="help-gloss-def">Ordures ménagères (bac à couvercle bordeaux / gris) — les déchets non recyclables.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">TRI</span><span class="help-gloss-def">Bac de tri (couvercle jaune) — emballages, papiers et cartons recyclables.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Enquête</span><span class="help-gloss-def">Visite de terrain pour relever les besoins de l'adresse (nombre de foyers, accès, type de logement).</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Livrable</span><span class="help-gloss-def">Indique si l'adresse peut être équipée. « Rouge » = non équipable, « Bleu » = pose reportée.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Temporisé</span><span class="help-gloss-def">Pose volontairement reportée (travaux, situation particulière à régler avant la livraison).</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">RS</span><span class="help-gloss-def">Remarque ou situation particulière notée lors de l'enquête.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BANDEAU TABLEAU DE BORD ── -->
+<div id="dashboard">
+  <div class="kpi kpi-posees">
+    <span class="kpi-val" id="kpiPosees">—</span>
+    <span class="kpi-lbl">Adresses équipées <span class="kpi-sub" id="kpiPoseesSub"></span></span>
+  </div>
+  <div class="kpi kpi-pct">
+    <span class="kpi-val" id="kpiPct">—</span>
+    <span class="kpi-lbl">Avancement de la pose</span>
+  </div>
+  <div class="kpi kpi-traiter">
+    <span class="kpi-val" id="kpiTraiter">—</span>
+    <span class="kpi-lbl">Adresses à traiter <span class="kpi-sub">non livrables + temporisées</span></span>
+  </div>
+  <div class="kpi kpi-date">
+    <span class="kpi-val" id="kpiScope">—</span>
+    <span class="kpi-lbl" id="kpiDate">Données du —</span>
+  </div>
+</div>
+
 <div id="app">
   <div id="sidebar">
     <div class="tabs">
@@ -497,6 +677,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
           <button id="btnResetFilter" title="Réinitialiser le filtre">×</button>
         </div>
         <div class="filter-badge" id="filterBadge"></div>
+        <button id="btnPrintReport" onclick="printCommuneReport()" title="Générer une fiche imprimable (PDF) pour cette commune">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Imprimer la fiche commune
+        </button>
       </div>
 
       <div class="psec">
@@ -574,6 +762,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     </div>
   </div>
 </div>
+
+<!-- ── FICHE COMMUNE (rendu à l'impression uniquement) ── -->
+<div id="printReport"></div>
 
 <script>
 'use strict';
@@ -734,12 +925,21 @@ const LABELS = {
   bleu:       'Temporisées (BLEU)',
   non_traite: 'Pas de retour d\'enquête'
 };
+// Descriptions courtes (légende latérale) — langage grand public
 const DESCS = {
-  livre:      'OM_LIVRE > 0 ou TRI_LIVRE > 0',
-  enquete:    'DATE_ENQ renseignée, sans livraison',
-  rouge:      'LIVRABLE = ROUGE',
-  bleu:       'LIVRABLE = BLEU',
+  livre:      'Bacs déjà posés (ordures ménagères et/ou tri)',
+  enquete:    'Adresse enquêtée, en attente de pose',
+  rouge:      'Adresse non équipable (accès, local…)',
+  bleu:       'Pose reportée (temporisée)',
   non_traite: 'Pas encore enquêtée'
+};
+// Descriptions détaillées (modale « Comprendre la carte »)
+const HELP_DESCS = {
+  livre:      'Les bacs ont été posés à cette adresse — ordures ménagères et/ou tri. La conteneurisation y est terminée.',
+  enquete:    'L\'adresse a été visitée (enquête réalisée) mais les bacs ne sont pas encore posés. La livraison reste à programmer.',
+  rouge:      'Adresse qui ne peut pas être équipée en l\'état : problème d\'accès, absence de local, copropriété à organiser, etc. Une action est nécessaire.',
+  bleu:       'Pose volontairement reportée (travaux en cours, situation particulière à régler avant de livrer).',
+  non_traite: 'Adresse pour laquelle aucune enquête de terrain n\'a encore eu lieu.'
 };
 const DEFAULT_VISIBLE = {
   livre:true, enquete:true, rouge:true, bleu:true, non_traite:false
@@ -755,6 +955,7 @@ let communeStats   = {};
 let globalStats    = {};
 let chartGlobal    = null;
 let chartCommune   = null;
+let dataDateLabel  = '—';   // libellé de fraîcheur des données (bandeau + fiche)
 
 // ═══════════════════════════════════════════════
 // CARTE LEAFLET
@@ -785,6 +986,20 @@ CATS.forEach(c => {
   if (DEFAULT_VISIBLE[c]) lGroups[c].addTo(map);
 });
 
+// Légende permanente sur la carte (pour captures d'écran et impressions)
+const mapLegend = L.control({ position:'bottomleft' });
+mapLegend.onAdd = function () {
+  const div = L.DomUtil.create('div', 'map-legend');
+  div.innerHTML = '<div class="map-legend-title">Légende</div>'
+    + CATS.map(c =>
+        `<div class="map-legend-row">
+           <span class="map-legend-dot" style="background:${COLORS[c]}"></span>
+           <span class="map-legend-lbl">${LABELS[c]}</span>
+         </div>`).join('');
+  return div;
+};
+mapLegend.addTo(map);
+
 // ═══════════════════════════════════════════════
 // LOGIQUE DE CATÉGORISATION
 // ═══════════════════════════════════════════════
@@ -807,6 +1022,40 @@ function formatDate(v) {
   return '' + v;
 }
 
+// Construit le contenu de l'infobulle / popup d'un point (réutilisé par les
+// marqueurs de la carte ET par la recherche d'adresse dans les données).
+function buildPointTip(row) {
+  const c        = categorize(row);
+  const adresse  = (row['ADRESSE']       || '') + '';
+  const commune  = ((row['COMMUNE']      || '') + '').trim();
+  const om       = row['OM_LIVRE']  || 0;
+  const tri      = row['TRI_LIVRE'] || 0;
+  const livrable = (row['LIVRABLE']      || '') + '';
+  const dateEnq  = formatDate(row['DATE_ENQ']);
+  const rs       = (row['RS']            || '') + '';
+  const typeLog  = (row['TYPE_LOGEMENT'] || '') + '';
+
+  let tip = `<strong>${adresse}</strong><br>`
+    + `<span style="color:#888">${commune}</span><br>`
+    + `<span style="color:${COLORS[c]}">●</span> <strong>${LABELS[c]}</strong><br>`
+    + `OM&nbsp;: ${om}&ensp;|&ensp;TRI&nbsp;: ${tri}`;
+  if (livrable) tip += `<br>Livrable&nbsp;: <b>${livrable}</b>`;
+  if (dateEnq)  tip += `<br>Enquête&nbsp;: ${dateEnq}`;
+  if (typeLog)  tip += `<br>Type&nbsp;: ${typeLog}`;
+  if (rs)       tip += `<br>RS&nbsp;: ${rs}`;
+  return tip;
+}
+
+// Chiffres clés calculés sur un objet de stats (globalStats ou communeStats[commune]).
+function kpis(scope) {
+  const s = scope || {};
+  const total    = s.total || 0;
+  const posees    = s.livre || 0;
+  const aTraiter  = (s.rouge || 0) + (s.bleu || 0);
+  const pct       = total > 0 ? Math.round(posees / total * 100) : 0;
+  return { posees, total, pct, aTraiter };
+}
+
 // ═══════════════════════════════════════════════
 // RECONSTRUCTION DES MARQUEURS
 // ═══════════════════════════════════════════════
@@ -822,15 +1071,7 @@ function rebuildMarkers() {
     const lon = parseFloat(row['LONGITUDE']);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    const c       = categorize(row);
-    const adresse = (row['ADRESSE']     || '') + '';
-    const commune = ((row['COMMUNE']    || '') + '').trim();
-    const om      = row['OM_LIVRE']  || 0;
-    const tri     = row['TRI_LIVRE'] || 0;
-    const livrable = (row['LIVRABLE']   || '') + '';
-    const dateEnq  = formatDate(row['DATE_ENQ']);
-    const rs       = (row['RS']         || '') + '';
-    const typeLog  = (row['TYPE_LOGEMENT'] || '') + '';
+    const c = categorize(row);
 
     const m = L.circleMarker([lat, lon], {
       radius:      4,
@@ -841,16 +1082,7 @@ function rebuildMarkers() {
       fillOpacity: 0.85
     });
 
-    let tip = `<strong>${adresse}</strong><br>`
-      + `<span style="color:#888">${commune}</span><br>`
-      + `<span style="color:${COLORS[c]}">●</span> <strong>${LABELS[c]}</strong><br>`
-      + `OM&nbsp;: ${om}&ensp;|&ensp;TRI&nbsp;: ${tri}`;
-    if (livrable) tip += `<br>Livrable&nbsp;: <b>${livrable}</b>`;
-    if (dateEnq)  tip += `<br>Enquête&nbsp;: ${dateEnq}`;
-    if (typeLog)  tip += `<br>Type&nbsp;: ${typeLog}`;
-    if (rs)       tip += `<br>RS&nbsp;: ${rs}`;
-
-    m.bindTooltip(tip, { sticky:true, opacity:0.97 });
+    m.bindTooltip(buildPointTip(row), { sticky:true, opacity:0.97 });
     lGroups[c].addLayer(m);
   });
 
@@ -909,9 +1141,12 @@ function processData(rows, fname, fileDate) {
 
   const displayDate = fileDate instanceof Date && !isNaN(fileDate) ? fileDate : new Date();
   const isFileDate  = fileDate instanceof Date && !isNaN(fileDate);
-  document.getElementById('dataInfo').textContent = isFileDate
+  dataDateLabel = isFileDate
     ? `Données du ${displayDate.toLocaleDateString('fr-FR')}`
     : `Importé le ${displayDate.toLocaleDateString('fr-FR')} à ${displayDate.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  document.getElementById('dataInfo').textContent = dataDateLabel;
+
+  updateDashboard(null);
 }
 
 // ═══════════════════════════════════════════════
@@ -934,6 +1169,125 @@ function updateProgress(commune) {
     `${(s.livre||0).toLocaleString('fr-FR')} / ${(s.total||0).toLocaleString('fr-FR')} livrées`;
   document.getElementById('progressPct').textContent = pct + '%';
 }
+
+// ═══════════════════════════════════════════════
+// BANDEAU TABLEAU DE BORD
+// ═══════════════════════════════════════════════
+function updateDashboard(commune) {
+  const k = kpis(commune ? communeStats[commune] : globalStats);
+  document.getElementById('kpiPosees').textContent  = k.posees.toLocaleString('fr-FR');
+  document.getElementById('kpiPoseesSub').textContent = `sur ${k.total.toLocaleString('fr-FR')}`;
+  document.getElementById('kpiPct').textContent     = k.pct + '%';
+  document.getElementById('kpiTraiter').textContent = k.aTraiter.toLocaleString('fr-FR');
+  document.getElementById('kpiScope').textContent   = commune || 'Tout le territoire';
+  document.getElementById('kpiDate').textContent    = dataDateLabel;
+}
+
+// ═══════════════════════════════════════════════
+// FICHE COMMUNE IMPRIMABLE
+// ═══════════════════════════════════════════════
+// Génère un donut hors écran et renvoie son image (data URL).
+function communeDonutDataURL(commune) {
+  const s = communeStats[commune] || {};
+  const canvas = document.createElement('canvas');
+  canvas.width = 380; canvas.height = 380;
+  const tmp = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: CATS.map(c => LABELS[c]),
+      datasets: [{ data: CATS.map(c => s[c] || 0), backgroundColor: CATS.map(c => COLORS[c]), borderWidth: 0 }]
+    },
+    options: { responsive: false, animation: false, cutout: '58%', plugins: { legend: { display: false } } }
+  });
+  const url = tmp.toBase64Image();
+  tmp.destroy();
+  return url;
+}
+
+function buildCommuneReport(commune) {
+  const s = communeStats[commune] || {};
+  const k = kpis(s);
+  const rows = allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune);
+  const aTraiter = rows.filter(r => { const c = categorize(r); return c === 'rouge' || c === 'bleu'; });
+
+  const legendHtml = CATS.map(c =>
+    `<div class="pr-leg-row"><span class="pr-leg-dot" style="background:${COLORS[c]}"></span>${LABELS[c]} : <b>${(s[c] || 0).toLocaleString('fr-FR')}</b></div>`
+  ).join('');
+
+  const listHtml = aTraiter.length
+    ? aTraiter
+        .sort((a, b) => ((a['ADRESSE'] || '') + '').localeCompare((b['ADRESSE'] || '') + '', 'fr'))
+        .map(r => {
+          const c = categorize(r);
+          return `<tr><td>${(r['ADRESSE'] || '') + ''}</td>`
+            + `<td><span class="pr-dot" style="background:${COLORS[c]}"></span>${LABELS[c]}</td>`
+            + `<td>${(r['RS'] || '') + ''}</td></tr>`;
+        }).join('')
+    : '<tr><td colspan="3" class="pr-empty">Aucune adresse à traiter pour cette commune.</td></tr>';
+
+  document.getElementById('printReport').innerHTML =
+    `<div class="pr-head">
+       <div class="pr-badge">NCPA</div>
+       <div>
+         <div class="pr-title">Suivi conteneurisation — ${commune}</div>
+         <div class="pr-date">${dataDateLabel}</div>
+       </div>
+     </div>
+     <div class="pr-kpis">
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.posees.toLocaleString('fr-FR')} / ${k.total.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses équipées</span></div>
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.pct}%</span><span class="pr-kpi-lbl">Avancement de la pose</span></div>
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.aTraiter.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses à traiter</span></div>
+     </div>
+     <div class="pr-chart-block">
+       <img class="pr-chart" src="${communeDonutDataURL(commune)}" alt="Répartition des adresses">
+       <div class="pr-legend">${legendHtml}</div>
+     </div>
+     <div class="pr-list-title">Adresses à traiter — non livrables &amp; temporisées (${aTraiter.length})</div>
+     <table class="pr-table">
+       <thead><tr><th style="width:48%">Adresse</th><th style="width:27%">Statut</th><th>Remarque</th></tr></thead>
+       <tbody>${listHtml}</tbody>
+     </table>
+     <div class="pr-foot">Document généré le ${new Date().toLocaleDateString('fr-FR')} · NCPA — Suivi conteneurisation VIACOL</div>`;
+}
+
+function printCommuneReport() {
+  if (!currentCommune) return;
+  buildCommuneReport(currentCommune);
+  window.print();
+}
+
+// ═══════════════════════════════════════════════
+// MODALE « COMPRENDRE LA CARTE »
+// ═══════════════════════════════════════════════
+function openHelpModal() {
+  const container = document.getElementById('helpCats');
+  if (!container.dataset.built) {
+    CATS.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'help-cat';
+      div.innerHTML =
+        `<span class="help-cat-dot" style="background:${COLORS[c]}"></span>
+         <span class="help-cat-txt">
+           <span class="help-cat-name">${LABELS[c]}</span>
+           <span class="help-cat-desc">${HELP_DESCS[c]}</span>
+         </span>`;
+      container.appendChild(div);
+    });
+    container.dataset.built = '1';
+  }
+  document.getElementById('helpModal').classList.remove('gone');
+}
+function closeHelpModal() {
+  document.getElementById('helpModal').classList.add('gone');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('helpModal').classList.contains('gone')) {
+    closeHelpModal();
+  }
+});
+document.getElementById('helpModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('helpModal')) closeHelpModal();
+});
 
 // ═══════════════════════════════════════════════
 // CONSTRUCTION DES ITEMS DE LÉGENDE
@@ -1094,13 +1448,16 @@ function applyFilter(commune) {
   // Badge + bouton reset
   const badge = document.getElementById('filterBadge');
   const btnReset = document.getElementById('btnResetFilter');
+  const btnPrint = document.getElementById('btnPrintReport');
   if (commune) {
     badge.textContent = `Affichage : ${commune}`;
     badge.classList.add('show');
     btnReset.classList.add('show');
+    btnPrint.classList.add('show');
   } else {
     badge.classList.remove('show');
     btnReset.classList.remove('show');
+    btnPrint.classList.remove('show');
   }
 
   showLoading(commune ? `Filtrage sur ${commune}…` : 'Réinitialisation…');
@@ -1108,6 +1465,7 @@ function applyFilter(commune) {
     rebuildMarkers();
     updateLayerCounts(commune || null);
     updateProgress(commune || null);
+    updateDashboard(commune || null);
 
     if (commune) {
       const pts = allRows
@@ -1251,27 +1609,80 @@ function hideLoading() {
     return { main: main || item.display_name.split(',')[0], sub };
   }
 
-  function renderSuggestions(results) {
+  // Recherche dans les adresses chargées (export VIACOL)
+  function searchLocalData(q) {
+    const needle = q.trim().toLowerCase();
+    if (needle.length < 3 || !allRows.length) return [];
+    const out = [];
+    for (const row of allRows) {
+      const adr = ((row['ADRESSE'] || '') + '').toLowerCase();
+      const com = ((row['COMMUNE'] || '') + '').toLowerCase();
+      if (adr.includes(needle) || com.includes(needle)) {
+        const lat = parseFloat(row['LATITUDE']);
+        const lon = parseFloat(row['LONGITUDE']);
+        if (isNaN(lat) || isNaN(lon)) continue;
+        out.push(row);
+        if (out.length >= 6) break;
+      }
+    }
+    return out;
+  }
+
+  // localRows : adresses trouvées dans les données ; osmResults : null = OSM en cours, [] = aucun
+  function renderSuggestions(localRows, osmResults) {
     suggestions.innerHTML = '';
     focusIndex = -1;
-    if (!results.length) {
+    const frag = document.createDocumentFragment();
+
+    if (localRows && localRows.length) {
+      const h = document.createElement('div');
+      h.className = 'gc-group';
+      h.textContent = 'Dans les données';
+      frag.appendChild(h);
+      localRows.forEach(row => {
+        const c   = categorize(row);
+        const adr = ((row['ADRESSE'] || '') + '').trim();
+        const com = ((row['COMMUNE'] || '') + '').trim();
+        const div = document.createElement('div');
+        div.className = 'gc-item';
+        div.innerHTML =
+          `<div class="gc-item-main"><span class="gc-item-status" style="background:${COLORS[c]}"></span>${adr}</div>`
+          + `<div class="gc-item-sub">${com} — ${LABELS[c]}</div>`;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectLocalResult(row); });
+        frag.appendChild(div);
+      });
+    }
+
+    if (osmResults === null) {
+      const note = document.createElement('div');
+      note.className = 'gc-item-notfound';
+      note.textContent = 'Recherche d\'autres adresses…';
+      frag.appendChild(note);
+    } else if (osmResults.length) {
+      const h = document.createElement('div');
+      h.className = 'gc-group';
+      h.textContent = 'Autres adresses (carte)';
+      frag.appendChild(h);
+      osmResults.forEach(item => {
+        const { main, sub } = buildDisplayName(item);
+        const div = document.createElement('div');
+        div.className = 'gc-item';
+        div.innerHTML = `<div class="gc-item-main">${main}</div>`
+          + (sub ? `<div class="gc-item-sub">${sub}</div>` : '');
+        div.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectResult(item, main + (sub ? ', ' + sub : ''));
+        });
+        frag.appendChild(div);
+      });
+    }
+
+    if (!frag.childNodes.length) {
       suggestions.innerHTML = '<div class="gc-item-notfound">Aucun résultat trouvé</div>';
       suggestions.classList.add('open');
       return;
     }
-    results.forEach((item, i) => {
-      const { main, sub } = buildDisplayName(item);
-      const div = document.createElement('div');
-      div.className = 'gc-item';
-      div.dataset.idx = i;
-      div.innerHTML = `<div class="gc-item-main">${main}</div>`
-        + (sub ? `<div class="gc-item-sub">${sub}</div>` : '');
-      div.addEventListener('mousedown', e => {
-        e.preventDefault();
-        selectResult(item, main + (sub ? ', ' + sub : ''));
-      });
-      suggestions.appendChild(div);
-    });
+    suggestions.appendChild(frag);
     suggestions.classList.add('open');
   }
 
@@ -1285,14 +1696,31 @@ function hideLoading() {
     closeSuggestions();
   }
 
+  // Sélection d'une adresse trouvée dans les données → centre + popup de statut
+  function selectLocalResult(row) {
+    const lat = parseFloat(row['LATITUDE']);
+    const lon = parseFloat(row['LONGITUDE']);
+    map.setView([lat, lon], 17, { animate: true });
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.circleMarker([lat, lon], {
+      radius: 9, color: '#fff', weight: 2.5,
+      fillColor: COLORS[categorize(row)], fillOpacity: 0.95
+    }).addTo(map).bindPopup(buildPointTip(row)).openPopup();
+    input.value = ((row['ADRESSE'] || '') + '').trim();
+    btnClear.classList.add('show');
+    closeSuggestions();
+  }
+
   // Saisie → suggestions après 400 ms
   input.addEventListener('input', () => {
     const q = input.value.trim();
     btnClear.classList.toggle('show', q.length > 0);
     if (q.length < 3) { closeSuggestions(); return; }
     debounce(async () => {
-      const res = await geocode(q);
-      renderSuggestions(res);
+      const local = searchLocalData(q);
+      renderSuggestions(local, null);          // affichage immédiat des données locales
+      const osm = await geocode(q);
+      renderSuggestions(local, osm);           // puis ajout des résultats OSM
     }, 400);
   });
 
@@ -1326,6 +1754,8 @@ function hideLoading() {
   async function triggerSearch() {
     const q = input.value.trim();
     if (!q) return;
+    const local = searchLocalData(q);
+    if (local.length) { selectLocalResult(local[0]); return; }
     closeSuggestions();
     const res = await geocode(q);
     if (res.length) {
