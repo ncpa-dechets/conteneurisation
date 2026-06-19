@@ -925,13 +925,13 @@ function updateLayerCounts(commune) {
   });
 }
 
-function updateProgress() {
-  const pct = globalStats.total > 0
-    ? Math.round(globalStats.livre / globalStats.total * 100) : 0;
+function updateProgress(commune) {
+  const s = commune ? (communeStats[commune] || {livre:0,total:0}) : globalStats;
+  const pct = s.total > 0 ? Math.round(s.livre / s.total * 100) : 0;
   document.getElementById('progressSec').style.display = '';
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressCount').textContent =
-    `${globalStats.livre.toLocaleString('fr-FR')} / ${globalStats.total.toLocaleString('fr-FR')} livrées`;
+    `${(s.livre||0).toLocaleString('fr-FR')} / ${(s.total||0).toLocaleString('fr-FR')} livrées`;
   document.getElementById('progressPct').textContent = pct + '%';
 }
 
@@ -1107,6 +1107,7 @@ function applyFilter(commune) {
   setTimeout(() => {
     rebuildMarkers();
     updateLayerCounts(commune || null);
+    updateProgress(commune || null);
 
     if (commune) {
       const pts = allRows
