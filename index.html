@@ -1054,15 +1054,9 @@ function buildCommuneTable() {
   const tbody = document.getElementById('communeTbody');
   tbody.innerHTML = '';
 
-  // Tri par % livraison décroissant
   const sorted = Object.keys(communeStats)
     .filter(Boolean)
-    .sort((a, b) => {
-      const sa = communeStats[a], sb = communeStats[b];
-      const pa = sa.total > 0 ? sa.livre / sa.total : 0;
-      const pb = sb.total > 0 ? sb.livre / sb.total : 0;
-      return pb - pa;
-    });
+    .sort((a, b) => a.localeCompare(b, 'fr'));
 
   sorted.forEach(commune => {
     const s   = communeStats[commune];
