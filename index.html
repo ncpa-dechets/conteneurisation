@@ -650,7 +650,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
   </div>
   <div class="kpi kpi-traiter">
     <span class="kpi-val" id="kpiTraiter">—</span>
-    <span class="kpi-lbl">Adresses à traiter <span class="kpi-sub">non livrables + temporisées</span></span>
+    <span class="kpi-lbl">Adresses à traiter <span class="kpi-sub">enquêtées + sans retour d'enquête</span></span>
   </div>
   <div class="kpi kpi-date">
     <span class="kpi-val" id="kpiScope">—</span>
@@ -1063,7 +1063,7 @@ function kpis(scope) {
   const s = scope || {};
   const total    = s.total || 0;
   const posees    = s.livre || 0;
-  const aTraiter  = (s.rouge || 0) + (s.bleu || 0);
+  const aTraiter  = (s.enquete || 0) + (s.non_traite || 0);
   const base      = baseLivrable(s);          // total hors non livrables
   const pct       = avancementPct(s);         // avancement sur la base livrable
   return { posees, total, base, pct, aTraiter };
@@ -1222,7 +1222,7 @@ function buildCommuneReport(commune) {
   const s = communeStats[commune] || {};
   const k = kpis(s);
   const rows = allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune);
-  const aTraiter = rows.filter(r => { const c = categorize(r); return c === 'rouge' || c === 'bleu'; });
+  const aTraiter = rows.filter(r => { const c = categorize(r); return c === 'enquete' || c === 'non_traite'; });
 
   const legendHtml = CATS.map(c =>
     `<div class="pr-leg-row"><span class="pr-leg-dot" style="background:${COLORS[c]}"></span>${LABELS[c]} : <b>${(s[c] || 0).toLocaleString('fr-FR')}</b></div>`
@@ -1256,7 +1256,7 @@ function buildCommuneReport(commune) {
        <img class="pr-chart" src="${communeDonutDataURL(commune)}" alt="Répartition des adresses">
        <div class="pr-legend">${legendHtml}</div>
      </div>
-     <div class="pr-list-title">Adresses à traiter — non livrables &amp; temporisées (${aTraiter.length})</div>
+     <div class="pr-list-title">Adresses à traiter — enquêtées &amp; sans retour d'enquête (${aTraiter.length})</div>
      <table class="pr-table">
        <thead><tr><th style="width:48%">Adresse</th><th style="width:27%">Statut</th><th>Remarque</th></tr></thead>
        <tbody>${listHtml}</tbody>
