@@ -1264,9 +1264,19 @@ function buildCommuneReport(commune) {
      <div class="pr-foot">Document généré le ${new Date().toLocaleDateString('fr-FR')} · NCPA — Suivi conteneurisation VIACOL</div>`;
 }
 
-function printCommuneReport() {
+async function printCommuneReport() {
   if (!currentCommune) return;
   buildCommuneReport(currentCommune);
+
+  // Attendre que l'image du donut soit décodée avant d'imprimer,
+  // sinon window.print() peut se déclencher avant le rendu (graphique vide).
+  const img = document.querySelector('#printReport .pr-chart');
+  if (img) {
+    try {
+      if (img.decode) await img.decode();
+      else if (!img.complete) await new Promise(res => { img.onload = img.onerror = res; });
+    } catch (e) { /* on imprime quand même */ }
+  }
   window.print();
 }
 
