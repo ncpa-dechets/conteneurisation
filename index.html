@@ -620,7 +620,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     </div>
     <p class="help-intro">
       Chaque point de la carte représente une adresse. Sa couleur indique où en est
-      la pose des bacs à cette adresse.
+      la livraison des bacs à cette adresse.
     </p>
 
     <span class="help-sub">Que signifient les couleurs ?</span>
@@ -631,8 +631,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
       <div class="help-gloss-row"><span class="help-gloss-term">OM</span><span class="help-gloss-def">Ordures ménagères (bac à couvercle bordeaux / gris) — les déchets non recyclables.</span></div>
       <div class="help-gloss-row"><span class="help-gloss-term">TRI</span><span class="help-gloss-def">Bac de tri (couvercle jaune) — emballages, papiers et cartons recyclables.</span></div>
       <div class="help-gloss-row"><span class="help-gloss-term">Enquête</span><span class="help-gloss-def">Visite de terrain pour relever les besoins de l'adresse (nombre de foyers, accès, type de logement).</span></div>
-      <div class="help-gloss-row"><span class="help-gloss-term">Livrable</span><span class="help-gloss-def">Indique si l'adresse peut être équipée. « Rouge » = non équipable, « Bleu » = pose reportée.</span></div>
-      <div class="help-gloss-row"><span class="help-gloss-term">Temporisé</span><span class="help-gloss-def">Pose volontairement reportée (travaux, situation particulière à régler avant la livraison).</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Livrable</span><span class="help-gloss-def">Indique si l'adresse peut être équipée. « Rouge » = non équipable, « Bleu » = livraison reportée.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Temporisé</span><span class="help-gloss-def">Livraison volontairement reportée (travaux, situation particulière à régler avant la livraison).</span></div>
       <div class="help-gloss-row"><span class="help-gloss-term">RS</span><span class="help-gloss-def">Remarque ou situation particulière notée lors de l'enquête.</span></div>
     </div>
   </div>
@@ -927,18 +927,18 @@ const LABELS = {
 };
 // Descriptions courtes (légende latérale) — langage grand public
 const DESCS = {
-  livre:      'Bacs déjà posés (ordures ménagères et/ou tri)',
-  enquete:    'Adresse enquêtée, en attente de pose',
+  livre:      'Bacs déjà livrés (ordures ménagères et/ou tri)',
+  enquete:    'Adresse enquêtée, en attente de livraison',
   rouge:      'Adresse non équipable (accès, local…)',
-  bleu:       'Pose reportée (temporisée)',
+  bleu:       'Livraison reportée (temporisée)',
   non_traite: 'Enquête non retournée'
 };
 // Descriptions détaillées (modale « Comprendre la carte »)
 const HELP_DESCS = {
-  livre:      'Les bacs ont été posés à cette adresse — ordures ménagères et/ou tri. La conteneurisation y est terminée.',
-  enquete:    'L\'adresse a été visitée (enquête réalisée) mais les bacs ne sont pas encore posés. La livraison reste à programmer.',
+  livre:      'Les bacs ont été livrés à cette adresse — ordures ménagères et/ou tri. La conteneurisation y est terminée.',
+  enquete:    'L\'adresse a été visitée (enquête réalisée) mais les bacs ne sont pas encore livrés. La livraison reste à programmer.',
   rouge:      'Adresse qui ne peut pas être équipée en l\'état : problème d\'accès, absence de local, copropriété à organiser, etc. Une action est nécessaire.',
-  bleu:       'Pose volontairement reportée (travaux en cours, situation particulière à régler avant de livrer).',
+  bleu:       'Livraison volontairement reportée (travaux en cours, situation particulière à régler avant de livrer).',
   non_traite: 'Adresse n\'ayant pas donné de réponse à l\'enquête de dotation.'
 };
 const DEFAULT_VISIBLE = {
