@@ -968,14 +968,16 @@ const tileCartoDB = L.tileLayer(
   { subdomains:'abcd', maxZoom:19, attribution:'© CartoDB' }
 ).addTo(map);
 
-const tileEsri = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom:19, attribution:'© Esri',
-    errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' }
+const tileIgn = L.tileLayer(
+  'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+  '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image%2Fjpeg' +
+  '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+  { maxNativeZoom:19, maxZoom:20,
+    attribution:"Orthophotos © <a href='https://www.ign.fr/'>IGN</a> / Géoplateforme" }
 );
 
 L.control.layers(
-  { '🗺️ Plan (CartoDB)': tileCartoDB, '🛰️ Satellite (Esri)': tileEsri },
+  { '🗺️ Plan (CartoDB)': tileCartoDB, '🛰️ Satellite (IGN)': tileIgn },
   {}, { position:'topright' }
 ).addTo(map);
 
