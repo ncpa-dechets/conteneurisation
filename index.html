@@ -981,6 +981,15 @@ L.control.layers(
   {}, { position:'topright' }
 ).addTo(map);
 
+// Bordure des points : fine bordure blanche sur fond satellite pour un meilleur contraste
+let markerStroke = { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+map.on('baselayerchange', e => {
+  markerStroke = (e.layer === tileIgn)
+    ? { color: '#fff', weight: 0.8 }
+    : { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+  rebuildMarkers();
+});
+
 // Groupes de couches
 const lGroups = {};
 CATS.forEach(c => {
@@ -1092,8 +1101,8 @@ function rebuildMarkers() {
       radius:      4,
       renderer:    cvs,
       fillColor:   COLORS[c],
-      color:       'rgba(0,0,0,0.2)',
-      weight:      0.5,
+      color:       markerStroke.color,
+      weight:      markerStroke.weight,
       fillOpacity: 0.85
     });
 
