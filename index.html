@@ -60,6 +60,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 }
 #btnExport.show{display:flex}
 #btnExport:hover{background:#2980b9;color:#fff;border-color:#2980b9}
+#btnSelectMode{
+  display:none;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(241,196,15,.5);color:#f1c40f;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnSelectMode.show{display:flex}
+#btnSelectMode:hover{background:#f1c40f;color:#0d1824;border-color:#f1c40f}
+#btnSelectMode.active{background:#f1c40f;color:#0d1824}
 
 /* ── EXPORT MODAL ── */
 #exportModal{
@@ -81,6 +91,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 }
 .exp-close:hover{color:#c0d8e8}
 .exp-section{margin-bottom:16px}
+.exp-section.disabled{opacity:.4;pointer-events:none}
+.exp-all-row.disabled{opacity:.4;pointer-events:none}
 .exp-section-lbl{
   font-size:9.5px;font-weight:700;text-transform:uppercase;
   letter-spacing:1px;color:#3d5d77;margin-bottom:10px;display:block
@@ -306,6 +318,28 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 /* ── MAP ── */
 #mapContainer{flex:1;position:relative;overflow:hidden}
 #map{position:absolute;inset:0}
+#mapContainer.selection-mode #map{cursor:crosshair}
+
+/* ── SÉLECTION MULTIPLE ── */
+#selectionControl{
+  position:absolute;top:10px;right:10px;z-index:1000;
+  display:flex;align-items:center;gap:8px
+}
+#selectionCounter{
+  font-size:11px;color:#0d1824;background:#f1c40f;
+  padding:5px 10px;border-radius:4px;font-weight:700;display:none
+}
+#selectionCounter.show{display:inline-block}
+#btnClearSelection{
+  display:none;background:#192534;border:1px solid #2d4055;color:#c0d8e8;
+  padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit
+}
+#btnClearSelection.show{display:inline-block}
+#btnClearSelection:hover{background:#B91E27;border-color:#B91E27;color:#fff}
+#selectionRect{
+  position:absolute;border:1.5px dashed #f1c40f;background:rgba(241,196,15,.15);
+  pointer-events:none;display:none;z-index:999
+}
 
 /* ── EMPTY STATE ── */
 #emptyState{
@@ -522,6 +556,12 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
       </svg>
       Comprendre la carte
     </button>
+    <button id="btnSelectMode" onclick="toggleSelectionMode()" title="Sélectionner des points sur la carte pour n'exporter que ceux-ci">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/>
+      </svg>
+      Sélection
+    </button>
     <button id="btnExport" onclick="openExportModal()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -591,6 +631,18 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
     </div>
 
     <div class="exp-section">
+      <span class="exp-section-lbl">Adresses à exporter</span>
+      <label class="exp-all-row">
+        <input type="radio" name="expSource" id="expSrcFiltered" value="filtered" checked onchange="onExportSourceChange()">
+        <span class="exp-all-lbl">Toutes les adresses filtrées</span>
+      </label>
+      <label class="exp-all-row">
+        <input type="radio" name="expSource" id="expSrcSelection" value="selection" onchange="onExportSourceChange()">
+        <span class="exp-all-lbl">Uniquement les points sélectionnés (<span id="expSelCount">0</span>)</span>
+      </label>
+    </div>
+
+    <div class="exp-section" id="expCatSection">
       <span class="exp-section-lbl">Catégories à inclure</span>
       <label class="exp-all-row">
         <input type="checkbox" id="expChkAll" checked onchange="toggleAllExportCats(this.checked)">
@@ -738,6 +790,13 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 
   <div id="mapContainer">
     <div id="map"></div>
+
+    <!-- Compteur de sélection + rectangle de glissé (mode "Sélection") -->
+    <div id="selectionControl">
+      <span id="selectionCounter"></span>
+      <button id="btnClearSelection" onclick="clearSelection()" title="Effacer la sélection">Effacer</button>
+    </div>
+    <div id="selectionRect"></div>
 
     <!-- Barre de recherche d'adresse -->
     <div id="geocoderControl">
@@ -925,6 +984,8 @@ const LABELS = {
   bleu:       'Temporisées (BLEU)',
   non_traite: 'Pas de retour d\'enquête'
 };
+// Style appliqué aux points sélectionnés sur la carte (mode "Sélection")
+const SELECTION_STYLE = { color: '#f1c40f', weight: 2.5 };
 // Descriptions courtes (légende latérale) — langage grand public
 const DESCS = {
   livre:      'Bacs déjà livrés (ordures ménagères et/ou tri)',
@@ -956,6 +1017,12 @@ let globalStats    = {};
 let chartGlobal    = null;
 let chartCommune   = null;
 let dataDateLabel  = '—';   // libellé de fraîcheur des données (bandeau + fiche)
+
+// ── Sélection multiple de points sur la carte (export ciblé) ──
+let selectionMode  = false;       // mode "Sélection" actif/inactif
+let selectedRefers = new Set();   // n° REFER des points sélectionnés
+let markersByRefer = new Map();   // REFER -> marker Leaflet courant (reconstruit à chaque rebuildMarkers())
+let rowsByRefer    = new Map();   // REFER -> row (construit dans processData(), indépendant des filtres)
 
 // ═══════════════════════════════════════════════
 // CARTE LEAFLET
@@ -1045,6 +1112,7 @@ function buildPointTip(row) {
   const dateEnq  = formatDate(row['DATE_ENQ']);
   const rs       = (row['RS']            || '') + '';
   const typeLog  = (row['TYPE_LOGEMENT'] || '') + '';
+  const refer    = (row['REFER']         || '') + '';
 
   let tip = `<strong>${adresse}</strong><br>`
     + `<span style="color:#888">${commune}</span><br>`
@@ -1054,6 +1122,7 @@ function buildPointTip(row) {
   if (dateEnq)  tip += `<br>Enquête&nbsp;: ${dateEnq}`;
   if (typeLog)  tip += `<br>Type&nbsp;: ${typeLog}`;
   if (rs)       tip += `<br>RS&nbsp;: ${rs}`;
+  if (refer)    tip += `<br>Réf.&nbsp;: ${refer}`;
   return tip;
 }
 
@@ -1085,6 +1154,7 @@ function kpis(scope) {
 // ═══════════════════════════════════════════════
 function rebuildMarkers() {
   CATS.forEach(c => lGroups[c].clearLayers());
+  markersByRefer.clear();
 
   const rows = currentCommune
     ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === currentCommune)
@@ -1095,18 +1165,29 @@ function rebuildMarkers() {
     const lon = parseFloat(row['LONGITUDE']);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    const c = categorize(row);
+    const c     = categorize(row);
+    const refer = (row['REFER'] || '') + '';
+    const selected = refer && selectedRefers.has(refer);
 
     const m = L.circleMarker([lat, lon], {
-      radius:      4,
+      radius:      selected ? 7 : 4,
       renderer:    cvs,
       fillColor:   COLORS[c],
-      color:       markerStroke.color,
-      weight:      markerStroke.weight,
+      color:       selected ? SELECTION_STYLE.color  : markerStroke.color,
+      weight:      selected ? SELECTION_STYLE.weight : markerStroke.weight,
       fillOpacity: 0.85
     });
 
     m.bindTooltip(buildPointTip(row), { sticky:true, opacity:0.97 });
+
+    if (refer) {
+      markersByRefer.set(refer, m);
+      m.on('click', () => {
+        if (!selectionMode) return;
+        toggleMarkerSelection(refer, m);
+      });
+    }
+
     lGroups[c].addLayer(m);
   });
 
@@ -1117,12 +1198,60 @@ function rebuildMarkers() {
   });
 }
 
+// Ajoute/retire un point de la sélection et met à jour son style sur la carte.
+function toggleMarkerSelection(refer, marker) {
+  if (selectedRefers.has(refer)) {
+    selectedRefers.delete(refer);
+    marker.setStyle({ radius: 4, color: markerStroke.color, weight: markerStroke.weight });
+  } else {
+    selectedRefers.add(refer);
+    marker.setStyle({ radius: 7, color: SELECTION_STYLE.color, weight: SELECTION_STYLE.weight });
+  }
+  updateSelectionUI();
+}
+
+// Vide entièrement la sélection courante et restaure le style normal des points concernés.
+function clearSelection() {
+  selectedRefers.forEach(refer => {
+    const m = markersByRefer.get(refer);
+    if (m) m.setStyle({ radius: 4, color: markerStroke.color, weight: markerStroke.weight });
+  });
+  selectedRefers.clear();
+  updateSelectionUI();
+}
+
+// Met à jour le compteur et le bouton "Effacer" en fonction de la sélection courante.
+function updateSelectionUI() {
+  const n = selectedRefers.size;
+  const counter = document.getElementById('selectionCounter');
+  counter.textContent = n > 0 ? `${n} sélectionné${n > 1 ? 's' : ''}` : '';
+  counter.classList.toggle('show', n > 0);
+  document.getElementById('btnClearSelection').classList.toggle('show', n > 0);
+}
+
+// Active/désactive le mode "Sélection" : au clic sur un point on le sélectionne, au glissé
+// sur la carte on sélectionne tout ce qui se trouve dans le rectangle tracé (cf. IIFE plus bas).
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  document.getElementById('btnSelectMode').classList.toggle('active', selectionMode);
+  document.getElementById('mapContainer').classList.toggle('selection-mode', selectionMode);
+  if (selectionMode) map.dragging.disable(); else map.dragging.enable();
+}
+
 // ═══════════════════════════════════════════════
 // TRAITEMENT DES DONNÉES
 // ═══════════════════════════════════════════════
 function processData(rows, fname, fileDate) {
   allRows        = rows;
   currentCommune = '';
+
+  // Index REFER -> row (indépendant des filtres commune/catégorie) + reset de la sélection
+  rowsByRefer = new Map();
+  rows.forEach(r => {
+    const refer = (r['REFER'] || '') + '';
+    if (refer) rowsByRefer.set(refer, r);
+  });
+  selectedRefers = new Set();
 
   // Calcul des statistiques
   const emptyStats = () => Object.fromEntries([...CATS, 'total'].map(k => [k, 0]));
@@ -1160,6 +1289,7 @@ function processData(rows, fname, fileDate) {
 
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('btnExport').classList.add('show');
+  document.getElementById('btnSelectMode').classList.add('show');
   document.getElementById('importInfo').textContent =
     `${fname}  ·  ${rows.length.toLocaleString('fr-FR')} adresses  ·  ${communes.size} communes`;
 
@@ -1829,6 +1959,63 @@ function hideLoading() {
 })();
 
 // ═══════════════════════════════════════════════
+// SÉLECTION RECTANGULAIRE (glissé sur la carte en mode "Sélection")
+// ═══════════════════════════════════════════════
+(function () {
+  const mapEl        = document.getElementById('map');
+  const mapContainer = document.getElementById('mapContainer');
+  const rectEl        = document.getElementById('selectionRect');
+  let dragStart = null; // {x, y} en coordonnées écran (clientX/clientY)
+
+  mapEl.addEventListener('mousedown', e => {
+    if (!selectionMode) return;
+    dragStart = { x: e.clientX, y: e.clientY };
+    rectEl.style.width  = '0px';
+    rectEl.style.height = '0px';
+    rectEl.style.display = 'block';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragStart) return;
+    const x1 = Math.min(dragStart.x, e.clientX), x2 = Math.max(dragStart.x, e.clientX);
+    const y1 = Math.min(dragStart.y, e.clientY), y2 = Math.max(dragStart.y, e.clientY);
+    const cRect = mapContainer.getBoundingClientRect();
+    rectEl.style.left   = (x1 - cRect.left) + 'px';
+    rectEl.style.top    = (y1 - cRect.top)  + 'px';
+    rectEl.style.width  = (x2 - x1) + 'px';
+    rectEl.style.height = (y2 - y1) + 'px';
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!dragStart) return;
+    const x1 = Math.min(dragStart.x, e.clientX), x2 = Math.max(dragStart.x, e.clientX);
+    const y1 = Math.min(dragStart.y, e.clientY), y2 = Math.max(dragStart.y, e.clientY);
+    dragStart = null;
+    rectEl.style.display = 'none';
+
+    // Un simple clic (pas de vrai glissé) est laissé au handler click du marqueur.
+    if (Math.abs(x2 - x1) < 4 && Math.abs(y2 - y1) < 4) return;
+
+    const mapRect = mapEl.getBoundingClientRect();
+    const bounds = L.latLngBounds(
+      map.containerPointToLatLng(L.point(x1 - mapRect.left, y1 - mapRect.top)),
+      map.containerPointToLatLng(L.point(x2 - mapRect.left, y2 - mapRect.top))
+    );
+
+    markersByRefer.forEach((marker, refer) => {
+      const row = rowsByRefer.get(refer);
+      if (!row || !visible[categorize(row)]) return;
+      if (bounds.contains(marker.getLatLng()) && !selectedRefers.has(refer)) {
+        selectedRefers.add(refer);
+        marker.setStyle({ radius: 7, color: SELECTION_STYLE.color, weight: SELECTION_STYLE.weight });
+      }
+    });
+    updateSelectionUI();
+  });
+})();
+
+// ═══════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════
 let exportFmt = 'csv';
@@ -1863,7 +2050,21 @@ function openExportModal() {
   });
 
   document.getElementById('expChkAll').checked = true;
-  updateExportSubmitState();
+
+  // Option "Uniquement les points sélectionnés" : reflète la sélection courante à chaque ouverture
+  document.getElementById('expSelCount').textContent = selectedRefers.size;
+  const selRadio = document.getElementById('expSrcSelection');
+  const selRow   = selRadio.closest('.exp-all-row');
+  if (selectedRefers.size === 0) {
+    selRadio.disabled = true;
+    selRow.classList.add('disabled');
+    document.getElementById('expSrcFiltered').checked = true;
+  } else {
+    selRadio.disabled = false;
+    selRow.classList.remove('disabled');
+  }
+
+  onExportSourceChange();
   document.getElementById('exportModal').classList.remove('gone');
 }
 
@@ -1886,8 +2087,19 @@ function syncExpAllCheckbox() {
   updateExportSubmitState();
 }
 
+function onExportSourceChange() {
+  const useSelection = document.getElementById('expSrcSelection').checked;
+  document.querySelectorAll('#expChecks input[type=checkbox]').forEach(cb => cb.disabled = useSelection);
+  document.getElementById('expChkAll').disabled = useSelection;
+  document.getElementById('expCatSection').classList.toggle('disabled', useSelection);
+  updateExportSubmitState();
+}
+
 function updateExportSubmitState() {
-  const any = [...document.querySelectorAll('#expChecks input[type=checkbox]')].some(cb => cb.checked);
+  const useSelection = document.getElementById('expSrcSelection').checked;
+  const any = useSelection
+    ? selectedRefers.size > 0
+    : [...document.querySelectorAll('#expChecks input[type=checkbox]')].some(cb => cb.checked);
   document.getElementById('expSubmit').disabled = !any;
 }
 
@@ -1898,16 +2110,22 @@ function setExportFmt(fmt) {
 }
 
 function doExport() {
-  const selectedCats = new Set(
-    [...document.querySelectorAll('#expChecks input[type=checkbox]')]
-      .filter(cb => cb.checked).map(cb => cb.dataset.cat)
-  );
-
+  const useSelection = document.getElementById('expSrcSelection').checked;
   const commune = currentCommune;
-  let rows = commune
-    ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
-    : allRows;
-  rows = rows.filter(r => selectedCats.has(categorize(r)));
+
+  let rows;
+  if (useSelection) {
+    rows = [...selectedRefers].map(refer => rowsByRefer.get(refer)).filter(Boolean);
+  } else {
+    const selectedCats = new Set(
+      [...document.querySelectorAll('#expChecks input[type=checkbox]')]
+        .filter(cb => cb.checked).map(cb => cb.dataset.cat)
+    );
+    rows = commune
+      ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+      : allRows;
+    rows = rows.filter(r => selectedCats.has(categorize(r)));
+  }
 
   if (!rows.length) { alert('Aucune adresse à exporter avec ces filtres.'); return; }
 
@@ -1915,7 +2133,7 @@ function doExport() {
   const enriched = rows.map(r => ({ ...r, CATEGORIE: LABELS[categorize(r)] }));
 
   const datePart = new Date().toISOString().slice(0,10);
-  const commPart = commune ? '_' + commune.replace(/\s+/g,'_') : '';
+  const commPart = useSelection ? '_selection' : (commune ? '_' + commune.replace(/\s+/g,'_') : '');
   const basename = `export_viacol${commPart}_${datePart}`;
 
   if (exportFmt === 'xlsx') {
