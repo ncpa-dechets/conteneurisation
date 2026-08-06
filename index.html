@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCPA — Suivi Conteneurisation VIACOL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:13px}
+
+/* ── LOADING ── */
+#loadingOverlay{
+  position:fixed;inset:0;background:rgba(8,16,26,.9);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:9999
+}
+#loadingOverlay.show{display:flex}
+.spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.12);border-top-color:#B91E27;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadingMsg{color:rgba(255,255,255,.75);font-size:13px}
+
+/* ── HEADER ── */
+#header{
+  height:50px;background:#0d1824;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  border-bottom:3px solid #B91E27;z-index:100
+}
+.hdr-left{display:flex;align-items:center;gap:11px}
+.ncpa-badge{background:#B91E27;color:#fff;font-size:11px;font-weight:800;
+  letter-spacing:1.5px;padding:4px 9px;border-radius:3px}
+#header h1{color:#fff;font-size:14px;font-weight:600;letter-spacing:.3px}
+#dataInfo{color:#B1B993;font-size:11px;padding-left:10px;border-left:1px solid #253545;margin-left:4px}
+#btnImport{
+  display:flex;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(185,30,39,.7);color:#ff8080;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnImport:hover{background:#B91E27;color:#fff;border-color:#B91E27}
+.hdr-actions{display:flex;align-items:center;gap:8px}
+#btnHelp{
+  display:flex;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(177,185,147,.4);color:#B1B993;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnHelp:hover{background:#B1B993;color:#0d1824;border-color:#B1B993}
+#btnExport{
+  display:none;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(52,152,219,.5);color:#7ab8d8;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnExport.show{display:flex}
+#btnExport:hover{background:#2980b9;color:#fff;border-color:#2980b9}
+#btnSelectMode{
+  display:none;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(241,196,15,.5);color:#f1c40f;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnSelectMode.show{display:flex}
+#btnSelectMode:hover{background:#f1c40f;color:#0d1824;border-color:#f1c40f}
+#btnSelectMode.active{background:#f1c40f;color:#0d1824}
+#btnStreetView{
+  display:none;align-items:center;gap:7px;background:none;
+  border:1.5px solid rgba(26,188,156,.5);color:#48d1b3;
+  padding:7px 14px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:background .15s,color .15s,border-color .15s
+}
+#btnStreetView.show{display:flex}
+#btnStreetView:hover{background:#1abc9c;color:#0d1824;border-color:#1abc9c}
+#btnStreetView.active{background:#1abc9c;color:#0d1824}
+
+/* ── EXPORT MODAL ── */
+#exportModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.82);
+  display:flex;align-items:center;justify-content:center
+}
+#exportModal.gone{display:none}
+.exp-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:10px;
+  padding:28px 26px 22px;width:400px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)
+}
+.exp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.exp-head h3{color:#e0eaf2;font-size:16px;font-weight:600}
+.exp-close{
+  background:none;border:none;color:#4d6880;font-size:20px;cursor:pointer;
+  line-height:1;padding:2px 6px;border-radius:3px;transition:color .15s
+}
+.exp-close:hover{color:#c0d8e8}
+.exp-section{margin-bottom:16px}
+.exp-section.disabled{opacity:.4;pointer-events:none}
+.exp-all-row.disabled{opacity:.4;pointer-events:none}
+.exp-section-lbl{
+  font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin-bottom:10px;display:block
+}
+.exp-context{
+  background:#111d2b;border:1px solid #1a2535;border-radius:5px;
+  padding:8px 12px;font-size:11.5px;color:#7a9aaa;margin-bottom:14px
+}
+.exp-context span{color:#B1B993;font-weight:600}
+.exp-checks{display:flex;flex-direction:column;gap:6px}
+.exp-check-row{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 10px;border-radius:5px;background:#111d2b;
+  cursor:pointer;user-select:none;transition:background .12s
+}
+.exp-check-row:hover{background:#1a2d40}
+.exp-check-row input[type=checkbox]{
+  accent-color:#3498db;width:14px;height:14px;cursor:pointer;flex-shrink:0
+}
+.exp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.exp-check-lbl{flex:1;font-size:12px;color:#c0d8e8}
+.exp-check-cnt{font-size:10.5px;color:#4d6880;font-weight:600}
+.exp-all-row{
+  display:flex;align-items:center;gap:9px;padding:6px 10px;
+  cursor:pointer;user-select:none;margin-bottom:4px
+}
+.exp-all-row input[type=checkbox]{accent-color:#7a9aaa;width:13px;height:13px;cursor:pointer}
+.exp-all-lbl{font-size:11px;color:#4d6880}
+.exp-format{display:flex;gap:8px;margin-bottom:18px}
+.exp-fmt-btn{
+  flex:1;padding:8px;border-radius:5px;border:1.5px solid #253545;
+  background:#111d2b;color:#7a9aaa;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:all .15s;text-align:center
+}
+.exp-fmt-btn.active{border-color:#3498db;color:#7ab8d8;background:#0e1e2e}
+.exp-submit{
+  width:100%;padding:11px;border-radius:5px;border:none;
+  background:#B91E27;color:#fff;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:background .15s
+}
+.exp-submit:hover{background:#9a1820}
+.exp-submit:disabled{background:#2d4055;color:#4d6880;cursor:default}
+
+/* ── HELP MODAL ── */
+#helpModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.82);
+  display:flex;align-items:center;justify-content:center
+}
+#helpModal.gone{display:none}
+.help-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:10px;
+  padding:26px 26px 22px;width:520px;max-width:95vw;max-height:88vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)
+}
+.help-inner::-webkit-scrollbar{width:6px}
+.help-inner::-webkit-scrollbar-thumb{background:#253545;border-radius:3px}
+.help-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.help-head h3{color:#e0eaf2;font-size:16px;font-weight:600}
+.help-intro{color:#7a9aaa;font-size:12px;line-height:1.5;margin-bottom:18px}
+.help-sub{
+  font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin:18px 0 10px;display:block
+}
+.help-cat{
+  display:flex;gap:11px;align-items:flex-start;
+  padding:9px 12px;border-radius:6px;background:#111d2b;margin-bottom:7px
+}
+.help-cat-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.help-cat-txt{flex:1}
+.help-cat-name{display:block;font-size:12.5px;color:#c0d8e8;font-weight:600;margin-bottom:2px}
+.help-cat-desc{display:block;font-size:11.5px;color:#7a9aaa;line-height:1.45}
+.help-gloss{display:flex;flex-direction:column;gap:5px}
+.help-gloss-row{
+  display:flex;gap:10px;padding:7px 12px;border-radius:5px;
+  background:#111d2b;font-size:11.5px;line-height:1.4
+}
+.help-gloss-term{color:#B1B993;font-weight:700;min-width:88px;flex-shrink:0}
+.help-gloss-def{color:#9ab8cc}
+
+/* ── DASHBOARD BAND ── */
+#dashboard{
+  height:64px;flex-shrink:0;background:#101c29;
+  border-bottom:1px solid #253545;
+  display:flex;align-items:stretch
+}
+.kpi{
+  flex:1;display:flex;flex-direction:column;justify-content:center;
+  padding:0 20px;border-right:1px solid #1a2535;min-width:0;gap:3px
+}
+.kpi:last-child{border-right:none}
+.kpi-val{font-size:21px;font-weight:800;line-height:1;color:#e0eaf2;letter-spacing:.3px}
+.kpi-lbl{font-size:11px;color:#7a9aaa;font-weight:600;line-height:1.25}
+.kpi-sub{display:block;font-size:9.5px;color:#4d6880;font-weight:500}
+.kpi-posees .kpi-val{color:#2ecc71}
+.kpi-pct .kpi-val{color:#2ecc71}
+.kpi-traiter .kpi-val{color:#e74c3c}
+.kpi-date .kpi-val{font-size:14px;color:#B1B993;font-weight:700}
+
+/* ── MAIN LAYOUT ── */
+#app{display:flex;height:calc(100vh - 50px - 64px);overflow:hidden}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:292px;min-width:292px;background:#192534;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-right:1px solid #253545
+}
+.tabs{display:flex;border-bottom:1px solid #253545;flex-shrink:0}
+.tab{
+  flex:1;padding:11px 4px;background:none;border:none;border-bottom:2px solid transparent;
+  color:#4d6880;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  cursor:pointer;transition:color .15s,border-color .15s;font-family:inherit
+}
+.tab:hover{color:#8aaec6}
+.tab.active{color:#e0eaf2;border-bottom-color:#B91E27}
+.tab-panel{display:none;flex-direction:column;overflow-y:auto;flex:1}
+.tab-panel.active{display:flex}
+.tab-panel::-webkit-scrollbar{width:4px}
+.tab-panel::-webkit-scrollbar-track{background:transparent}
+.tab-panel::-webkit-scrollbar-thumb{background:#253545;border-radius:2px}
+
+/* ── PANEL SECTIONS ── */
+.psec{padding:12px 14px;border-bottom:1px solid #1a2535}
+.slbl{display:block;font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin-bottom:8px}
+
+/* ── COMMUNE SELECT ── */
+.commune-row{display:flex;gap:6px;align-items:center}
+#communeFilter{
+  flex:1;background:#111d2b;color:#b8cdd8;border:1px solid #253545;
+  border-radius:4px;padding:7px 10px;font-size:12px;cursor:pointer;
+  outline:none;font-family:inherit
+}
+#communeFilter:focus{border-color:#B91E27}
+#communeFilter option{background:#111d2b}
+#btnResetFilter{
+  background:#253545;border:none;color:#7a9aaa;width:30px;height:30px;
+  border-radius:4px;cursor:pointer;font-size:16px;line-height:1;
+  display:none;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background .15s
+}
+#btnResetFilter.show{display:flex}
+#btnResetFilter:hover{background:#B91E27;color:#fff}
+.filter-badge{
+  font-size:10px;color:#B1B993;background:#1a2535;
+  padding:4px 10px;border-radius:3px;margin-top:6px;display:none
+}
+.filter-badge.show{display:block}
+#btnPrintReport{
+  display:none;width:100%;margin-top:8px;
+  align-items:center;justify-content:center;gap:7px;
+  background:none;border:1.5px solid rgba(177,185,147,.4);color:#B1B993;
+  padding:8px 12px;border-radius:4px;cursor:pointer;
+  font-size:11.5px;font-weight:600;font-family:inherit;transition:all .15s
+}
+#btnPrintReport.show{display:flex}
+#btnPrintReport:hover{background:#B1B993;color:#0d1824;border-color:#B1B993}
+
+/* ── LAYER ITEMS ── */
+.layer-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 10px;border-radius:5px;margin-bottom:4px;
+  background:#111d2b;cursor:pointer;user-select:none;
+  transition:background .12s,opacity .15s
+}
+.layer-item:hover{background:#1a2d40}
+.layer-item.off{opacity:.3}
+.layer-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.layer-text{flex:1;min-width:0}
+.layer-name{display:block;font-size:12px;color:#c0d8e8;font-weight:500;line-height:1.3}
+.layer-sub{display:block;font-size:10px;color:#3d5d77;margin-top:2px}
+.layer-cnt{
+  font-size:11px;font-weight:700;color:#5a7a94;
+  min-width:42px;text-align:right;background:#192534;padding:2px 7px;border-radius:3px
+}
+
+/* ── PROGRESS ── */
+.prog-bar{height:6px;background:#111d2b;border-radius:3px;overflow:hidden;margin-bottom:6px}
+#progressFill{height:100%;background:linear-gradient(90deg,#27ae60,#2ecc71);border-radius:3px;
+  transition:width .6s ease;width:0%}
+.prog-stats{display:flex;justify-content:space-between;font-size:11px}
+#progressCount{color:#4d6880}
+#progressPct{font-weight:700;color:#2ecc71}
+
+/* ── IMPORT INFO ── */
+#importInfo{
+  padding:8px 14px;font-size:10px;color:#3d5d77;
+  background:#111d2b;margin-top:auto;flex-shrink:0;border-top:1px solid #1a2535
+}
+
+/* ── CHARTS ── */
+.chart-blk{padding:12px 14px;border-bottom:1px solid #1a2535}
+.chart-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#3d5d77;margin-bottom:10px}
+#chartCommuneWrap{position:relative;min-height:300px}
+
+/* ── COMMUNE TABLE ── */
+#communeTable{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+#communeTable thead th{
+  position:sticky;top:0;background:#111d2b;color:#3d5d77;
+  font-size:9px;text-transform:uppercase;letter-spacing:.4px;
+  padding:8px 3px;border-bottom:1px solid #253545;font-weight:700;overflow:hidden
+}
+#communeTable td{padding:6px 3px;border-bottom:1px solid #192534;color:#7a9aaa}
+#communeTable tbody tr:hover td{background:#1a2d40;cursor:pointer}
+/* Largeurs fixes des colonnes numériques — la col. Commune prend le reste */
+#communeTable th:nth-child(2),#communeTable td:nth-child(2){width:37px}
+#communeTable th:nth-child(3),#communeTable td:nth-child(3){width:30px}
+#communeTable th:nth-child(4),#communeTable td:nth-child(4){width:27px}
+#communeTable th:nth-child(5),#communeTable td:nth-child(5){width:28px}
+#communeTable th:nth-child(6),#communeTable td:nth-child(6){width:42px}
+.td-commune{
+  color:#c0d8e8 !important;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.td-num{text-align:right !important}
+.pct-badge{
+  display:inline-block;padding:1px 4px;border-radius:3px;
+  font-weight:700;font-size:10px
+}
+
+/* ── MAP ── */
+#mapContainer{flex:1;position:relative;overflow:hidden}
+#map{position:absolute;inset:0}
+#mapContainer.selection-mode #map{cursor:crosshair}
+#mapContainer.streetview-mode #map{cursor:pointer}
+
+/* ── STREET VIEW (volet latéral, sans clé API Google Maps) ── */
+#svPanel{
+  position:absolute;top:0;right:0;bottom:0;width:380px;max-width:92vw;
+  background:#192534;border-left:1px solid #253545;
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .22s ease;
+  z-index:1400;box-shadow:-8px 0 24px rgba(0,0,0,.4)
+}
+#svPanel.open{transform:translateX(0)}
+#svHeader{
+  height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;background:#0d1824;border-bottom:1px solid #253545
+}
+#svTitle{color:#e0eaf2;font-size:12.5px;font-weight:700}
+#svCoords{color:#7a9aaa;font-size:10.5px;margin-top:2px}
+#svBody{flex:1;position:relative;background:#0d1824}
+#svFrame{width:100%;height:100%;border:0;display:block}
+.sv-pin{background:none;border:none;font-size:22px;line-height:1;text-align:center;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+
+/* ── SÉLECTION MULTIPLE ── */
+#selectionControl{
+  position:absolute;top:10px;right:10px;z-index:1000;
+  display:flex;align-items:center;gap:8px
+}
+#selectionCounter{
+  font-size:11px;color:#0d1824;background:#f1c40f;
+  padding:5px 10px;border-radius:4px;font-weight:700;display:none
+}
+#selectionCounter.show{display:inline-block}
+#btnClearSelection{
+  display:none;background:#192534;border:1px solid #2d4055;color:#c0d8e8;
+  padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit
+}
+#btnClearSelection.show{display:inline-block}
+#btnClearSelection:hover{background:#B91E27;border-color:#B91E27;color:#fff}
+#selectionRect{
+  position:absolute;border:1.5px dashed #f1c40f;background:rgba(241,196,15,.15);
+  pointer-events:none;display:none;z-index:999
+}
+
+/* ── EMPTY STATE ── */
+#emptyState{
+  position:absolute;inset:0;background:#ece9e2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;z-index:500
+}
+.empty-icon{font-size:54px;filter:grayscale(1);opacity:.35}
+#emptyState p{color:#888;font-size:15px;text-align:center;max-width:280px;line-height:1.5}
+.btn-empty{
+  background:#B91E27;color:#fff;border:none;padding:11px 24px;
+  border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;
+  transition:background .15s
+}
+.btn-empty:hover{background:#9a1820}
+
+/* ── GEOCODER SEARCH ── */
+#geocoderControl{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1000;
+  width:400px;max-width:calc(100% - 20px);
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif
+}
+/* Bascule de mode + champ de saisie alignés sur une même ligne */
+#geocoderRow{display:flex;align-items:stretch;gap:6px}
+#geocoderModes{
+  display:flex;flex-shrink:0;
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);overflow:hidden
+}
+.gc-mode{
+  background:none;border:none;
+  color:#4d6880;font-family:inherit;font-size:10px;font-weight:600;
+  letter-spacing:.4px;padding:0 11px;cursor:pointer;
+  transition:background .15s,color .15s
+}
+.gc-mode + .gc-mode{border-left:1px solid #2d4055}
+.gc-mode:hover:not(.active){color:#c0d8e8}
+.gc-mode.active{background:#B91E27;color:#fff}
+#geocoderWrap{
+  flex:1;min-width:0;position:relative;
+  display:flex;align-items:center;
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);overflow:visible
+}
+#geocoderInput{
+  flex:1;background:transparent;border:none;outline:none;
+  color:#c0d8e8;font-size:12.5px;padding:8px 10px;
+  font-family:inherit;min-width:0
+}
+#geocoderInput::placeholder{color:#3d5d77}
+#geocoderBtn{
+  background:none;border:none;border-left:1px solid #2d4055;
+  color:#4d6880;padding:8px 11px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;transition:color .15s
+}
+#geocoderBtn:hover{color:#c0d8e8}
+#geocoderBtn svg{display:block}
+#geocoderClear{
+  background:none;border:none;color:#3d5d77;padding:6px 6px;
+  cursor:pointer;flex-shrink:0;font-size:16px;line-height:1;
+  display:none;align-items:center;justify-content:center;
+  transition:color .15s
+}
+#geocoderClear.show{display:flex}
+#geocoderClear:hover{color:#c0d8e8}
+#geocoderSuggestions{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  overflow:hidden;display:none
+}
+#geocoderSuggestions.open{display:block}
+.gc-item{
+  padding:9px 12px;cursor:pointer;font-size:12px;color:#9ab8cc;
+  border-bottom:1px solid #1a2535;line-height:1.35;
+  transition:background .1s
+}
+.gc-item:last-child{border-bottom:none}
+.gc-item:hover,.gc-item.focused{background:#1a2d40;color:#e0eaf2}
+.gc-item-main{font-weight:500;color:#c0d8e8}
+.gc-item-sub{font-size:10.5px;color:#4d6880;margin-top:1px}
+.gc-item-notfound{padding:9px 12px;font-size:11.5px;color:#4d6880;text-align:center}
+.gc-group{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+  color:#3d5d77;padding:7px 12px 4px;background:#111d2b;
+  border-bottom:1px solid #1a2535
+}
+/* Fiche affichée pour un REFER trouvé mais dépourvu de coordonnées */
+.gc-card{padding:10px 12px;font-size:11.5px;color:#9ab8cc;line-height:1.45}
+.gc-card-warn{color:#e0a030;font-size:10.5px;margin-top:6px}
+.gc-item-status{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.25)
+}
+#geocoderMarker{pointer-events:none}
+
+/* ── LEAFLET OVERRIDES ── */
+.leaflet-tooltip{
+  background:#fff !important;border:none !important;
+  border-radius:6px !important;box-shadow:0 3px 14px rgba(0,0,0,.18) !important;
+  padding:8px 12px !important;font-size:12px !important;
+  line-height:1.65 !important;max-width:240px !important
+}
+.leaflet-tooltip::before{display:none !important}
+.leaflet-control-layers{
+  background:#192534 !important;border:1px solid #253545 !important;
+  border-radius:6px !important;padding:8px !important
+}
+.leaflet-control-layers-base label{color:#c0d8e8 !important;font-size:12px !important}
+.leaflet-control-zoom a{
+  background:#192534 !important;color:#c0d8e8 !important;
+  border-color:#253545 !important
+}
+.leaflet-control-zoom a:hover{background:#253545 !important}
+.leaflet-bar{border:none !important}
+
+/* ── LÉGENDE SUR LA CARTE ── */
+.map-legend{
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  padding:9px 12px;box-shadow:0 3px 14px rgba(0,0,0,.35);
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif
+}
+.map-legend-title{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#3d5d77;margin-bottom:7px
+}
+.map-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.map-legend-row:last-child{margin-bottom:0}
+.map-legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.25)}
+.map-legend-lbl{font-size:11px;color:#c0d8e8}
+
+/* ── STARTUP MODAL ── */
+#startModal{
+  position:fixed;inset:0;z-index:8000;
+  background:rgba(6,12,20,.97);
+  display:flex;align-items:center;justify-content:center;
+}
+#startModal.gone{display:none}
+.sm-inner{
+  background:#192534;border:1px solid #2d4055;border-radius:12px;
+  padding:36px 30px 24px;width:500px;max-width:95vw;
+  box-shadow:0 24px 64px rgba(0,0,0,.6)
+}
+.sm-head{text-align:center;margin-bottom:28px}
+.sm-badge2{
+  display:inline-block;background:#B91E27;color:#fff;
+  font-size:12px;font-weight:800;letter-spacing:2px;
+  padding:4px 10px;border-radius:3px;margin-bottom:14px
+}
+.sm-head h2{color:#e0eaf2;font-size:20px;font-weight:600;margin-bottom:6px}
+.sm-head p{color:#4d6880;font-size:12.5px}
+.sm-cards{display:flex;gap:12px}
+.sm-card{
+  flex:1;background:#111d2b;border:1.5px solid #253545;
+  border-radius:8px;padding:22px 16px 18px;cursor:pointer;
+  transition:border-color .15s,background .15s;
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:8px
+}
+.sm-card:hover{border-color:#3d5d77;background:#1a2d40}
+.sm-card.sm-active{border-color:#B91E27 !important;background:#1a2535 !important}
+.sm-icon{font-size:34px;line-height:1;margin-bottom:2px}
+.sm-title{color:#c0d8e8;font-size:14px;font-weight:600}
+.sm-desc{color:#4d6880;font-size:11px;line-height:1.55}
+.sm-pwd{margin-top:10px;width:100%;text-align:left}
+.sm-pwd-row{display:flex;gap:6px;margin-bottom:5px}
+.sm-pwd-row input{
+  flex:1;background:#0d1824;color:#c0d8e8;border:1px solid #3d5d77;
+  border-radius:4px;padding:8px 10px;font-size:12px;outline:none;
+  font-family:inherit;min-width:0
+}
+.sm-pwd-row input:focus{border-color:#B91E27}
+.sm-pwd-row button{
+  background:#B91E27;color:#fff;border:none;border-radius:4px;
+  padding:8px 14px;cursor:pointer;font-size:14px;font-weight:700;
+  font-family:inherit;transition:background .15s;white-space:nowrap
+}
+.sm-pwd-row button:hover{background:#9a1820}
+.sm-err{color:#e74c3c;font-size:11px;min-height:15px}
+.sm-foot{
+  text-align:center;margin-top:20px;padding-top:16px;
+  border-top:1px solid #253545;font-size:10px;color:#2d4055
+}
+.sm-esc-hint{color:#3d5d77;font-size:10.5px}
+
+/* ── FICHE COMMUNE IMPRIMABLE ── */
+#printReport{display:none}
+@media print{
+  #header,#dashboard,#app,#startModal,#exportModal,#helpModal,#loadingOverlay{display:none !important}
+  html,body{height:auto;overflow:visible;background:#fff;font-size:12px}
+  #printReport{display:block;color:#1a2535}
+  .pr-head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #B91E27;padding-bottom:12px;margin-bottom:18px}
+  .pr-badge{background:#B91E27;color:#fff;font-weight:800;letter-spacing:1.5px;padding:6px 11px;border-radius:3px;font-size:13px}
+  .pr-title{font-size:18px;font-weight:700;color:#0d1824}
+  .pr-date{font-size:12px;color:#666;margin-top:2px}
+  .pr-kpis{display:flex;gap:14px;margin-bottom:18px}
+  .pr-kpi{flex:1;border:1px solid #ddd;border-radius:6px;padding:10px 14px;text-align:center}
+  .pr-kpi-val{display:block;font-size:20px;font-weight:800;color:#0d1824}
+  .pr-kpi-lbl{display:block;font-size:11px;color:#666;margin-top:3px}
+  .pr-chart-block{display:flex;align-items:center;gap:28px;margin-bottom:18px}
+  .pr-chart{width:190px;height:190px;flex-shrink:0}
+  .pr-legend{font-size:12px;line-height:1.95}
+  .pr-leg-dot,.pr-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .pr-list-title{font-size:13px;font-weight:700;color:#0d1824;margin-bottom:8px;border-bottom:1px solid #ccc;padding-bottom:5px}
+  .pr-table{width:100%;border-collapse:collapse;font-size:11px}
+  .pr-table th{text-align:left;color:#666;border-bottom:1.5px solid #999;padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+  .pr-table td{padding:5px 6px;border-bottom:1px solid #eee;color:#222;vertical-align:top}
+  .pr-table tr{page-break-inside:avoid}
+  .pr-empty{text-align:center;color:#27ae60;padding:14px}
+  .pr-foot{margin-top:22px;font-size:10px;color:#999;text-align:center}
+  @page{margin:1.4cm}
+}
+</style>
+</head>
+<body>
+<input type="file" id="fileInput" accept=".xlsx" style="display:none">
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Chargement en cours…</p>
+</div>
+
+<div id="header">
+  <div class="hdr-left">
+    <span class="ncpa-badge">NCPA</span>
+    <h1>Suivi Conteneurisation</h1>
+    <span id="dataInfo"></span>
+  </div>
+  <div class="hdr-actions">
+    <button id="btnHelp" onclick="openHelpModal()" title="Comprendre la carte">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Comprendre la carte
+    </button>
+    <button id="btnSelectMode" onclick="toggleSelectionMode()" title="Sélectionner des points sur la carte pour n'exporter que ceux-ci">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/>
+      </svg>
+      Sélection
+    </button>
+    <button id="btnStreetView" onclick="toggleStreetViewMode()" title="Activer le mode aperçu Street View, puis cliquer sur la carte">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      Street View
+    </button>
+    <button id="btnExport" onclick="openExportModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Exporter
+    </button>
+    <button id="btnImport" onclick="openModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Charger les données
+    </button>
+  </div>
+</div>
+
+<!-- ── STARTUP MODAL ── -->
+<div id="startModal">
+  <div class="sm-inner">
+    <div class="sm-head">
+      <div class="sm-badge2">NCPA</div>
+      <h2>Suivi Conteneurisation</h2>
+      <p>Choisissez la source des données VIACOL</p>
+    </div>
+    <div class="sm-cards">
+
+      <!-- Carte GitHub -->
+      <div class="sm-card" id="smcGithub">
+        <div class="sm-icon">🌐</div>
+        <div class="sm-title">Dernières données actualisées</div>
+        <div class="sm-desc">Charger l'export le plus récent<br>depuis le dépôt</div>
+        <div class="sm-pwd" id="smPwdSection" style="display:none">
+          <div class="sm-pwd-row">
+            <input type="password" id="smPwdInput" placeholder="Mot de passe…" autocomplete="off">
+            <button id="smBtnPwd">↵</button>
+          </div>
+          <div class="sm-err" id="smPwdErr"></div>
+        </div>
+      </div>
+
+      <!-- Carte fichier local -->
+      <div class="sm-card" id="smcLocal">
+        <div class="sm-icon">📂</div>
+        <div class="sm-title">Fichier local</div>
+        <div class="sm-desc">Importer un export .xlsx<br>depuis votre ordinateur</div>
+      </div>
+
+    </div>
+    <div class="sm-foot">
+      <span class="sm-esc-hint" id="smEscHint" style="display:none">Appuyez sur Échap pour fermer sans recharger</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── EXPORT MODAL ── -->
+<div id="exportModal" class="gone">
+  <div class="exp-inner">
+    <div class="exp-head">
+      <h3>Exporter les données</h3>
+      <button class="exp-close" onclick="closeExportModal()" title="Fermer">×</button>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Périmètre</span>
+      <div class="exp-context" id="expContext">—</div>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Adresses à exporter</span>
+      <label class="exp-all-row">
+        <input type="radio" name="expSource" id="expSrcFiltered" value="filtered" checked onchange="onExportSourceChange()">
+        <span class="exp-all-lbl">Toutes les adresses filtrées</span>
+      </label>
+      <label class="exp-all-row">
+        <input type="radio" name="expSource" id="expSrcSelection" value="selection" onchange="onExportSourceChange()">
+        <span class="exp-all-lbl">Uniquement les points sélectionnés (<span id="expSelCount">0</span>)</span>
+      </label>
+    </div>
+
+    <div class="exp-section" id="expCatSection">
+      <span class="exp-section-lbl">Catégories à inclure</span>
+      <label class="exp-all-row">
+        <input type="checkbox" id="expChkAll" checked onchange="toggleAllExportCats(this.checked)">
+        <span class="exp-all-lbl">Tout sélectionner / désélectionner</span>
+      </label>
+      <div class="exp-checks" id="expChecks"></div>
+    </div>
+
+    <div class="exp-section">
+      <span class="exp-section-lbl">Format</span>
+      <div class="exp-format">
+        <button class="exp-fmt-btn active" id="expFmtCsv" onclick="setExportFmt('csv')">CSV</button>
+        <button class="exp-fmt-btn" id="expFmtXlsx" onclick="setExportFmt('xlsx')">Excel (.xlsx)</button>
+      </div>
+    </div>
+
+    <button class="exp-submit" id="expSubmit" onclick="doExport()">Télécharger</button>
+  </div>
+</div>
+
+<!-- ── HELP MODAL ── -->
+<div id="helpModal" class="gone">
+  <div class="help-inner">
+    <div class="help-head">
+      <h3>Comprendre la carte</h3>
+      <button class="exp-close" onclick="closeHelpModal()" title="Fermer">×</button>
+    </div>
+    <p class="help-intro">
+      Chaque point de la carte représente une adresse. Sa couleur indique où en est
+      la livraison des bacs à cette adresse.
+    </p>
+
+    <span class="help-sub">Que signifient les couleurs ?</span>
+    <div id="helpCats"></div>
+
+    <span class="help-sub">Petit glossaire</span>
+    <div class="help-gloss">
+      <div class="help-gloss-row"><span class="help-gloss-term">OM</span><span class="help-gloss-def">Ordures ménagères (bac à couvercle bordeaux / gris) — les déchets non recyclables.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">TRI</span><span class="help-gloss-def">Bac de tri (couvercle jaune) — emballages, papiers et cartons recyclables.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Enquête</span><span class="help-gloss-def">Visite de terrain pour relever les besoins de l'adresse (nombre de foyers, accès, type de logement).</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Livrable</span><span class="help-gloss-def">Indique si l'adresse peut être équipée. « Rouge » = non équipable, « Bleu » = livraison reportée.</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">Temporisé</span><span class="help-gloss-def">Livraison volontairement reportée (travaux, situation particulière à régler avant la livraison).</span></div>
+      <div class="help-gloss-row"><span class="help-gloss-term">RS</span><span class="help-gloss-def">Remarque ou situation particulière notée lors de l'enquête.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BANDEAU TABLEAU DE BORD ── -->
+<div id="dashboard">
+  <div class="kpi kpi-posees">
+    <span class="kpi-val" id="kpiPosees">—</span>
+    <span class="kpi-lbl">Adresses équipées <span class="kpi-sub" id="kpiPoseesSub"></span></span>
+  </div>
+  <div class="kpi kpi-pct">
+    <span class="kpi-val" id="kpiPct">—</span>
+    <span class="kpi-lbl">Avancement de la livraison <span class="kpi-sub">hors non livrables</span></span>
+  </div>
+  <div class="kpi kpi-traiter">
+    <span class="kpi-val" id="kpiTraiter">—</span>
+    <span class="kpi-lbl">Adresses à traiter <span class="kpi-sub">enquêtées + sans retour d'enquête</span></span>
+  </div>
+  <div class="kpi kpi-date">
+    <span class="kpi-val" id="kpiScope">—</span>
+    <span class="kpi-lbl" id="kpiDate">Données du —</span>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="tabs">
+      <button class="tab active" data-tab="legende">Légende</button>
+      <button class="tab" data-tab="stats">Statistiques</button>
+      <button class="tab" data-tab="communes">Communes</button>
+    </div>
+
+    <!-- TAB LÉGENDE -->
+    <div class="tab-panel active" id="tab-legende">
+      <div class="psec">
+        <span class="slbl">Filtrer par commune</span>
+        <div class="commune-row">
+          <select id="communeFilter">
+            <option value="">— Toutes les communes —</option>
+          </select>
+          <button id="btnResetFilter" title="Réinitialiser le filtre">×</button>
+        </div>
+        <div class="filter-badge" id="filterBadge"></div>
+        <button id="btnPrintReport" onclick="printCommuneReport()" title="Générer une fiche imprimable (PDF) pour cette commune">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Imprimer la fiche commune
+        </button>
+      </div>
+
+      <div class="psec">
+        <span class="slbl">Couches cartographiques</span>
+        <div id="layerList"></div>
+      </div>
+
+      <div class="psec" id="progressSec" style="display:none">
+        <span class="slbl">Avancement livraisons</span>
+        <div class="prog-bar"><div id="progressFill"></div></div>
+        <div class="prog-stats">
+          <span id="progressCount">—</span>
+          <span id="progressPct">—</span>
+        </div>
+      </div>
+
+      <div id="importInfo"></div>
+    </div>
+
+    <!-- TAB STATS -->
+    <div class="tab-panel" id="tab-stats">
+      <div class="chart-blk">
+        <div class="chart-lbl">Répartition globale du territoire</div>
+        <canvas id="chartGlobal" style="max-height:210px"></canvas>
+      </div>
+      <div class="chart-blk">
+        <div class="chart-lbl">Adresses par commune (empilé)</div>
+        <div id="chartCommuneWrap">
+          <canvas id="chartCommune"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB COMMUNES -->
+    <div class="tab-panel" id="tab-communes">
+      <table id="communeTable">
+        <thead>
+          <tr>
+            <th>Commune</th>
+            <th class="td-num">Total</th>
+            <th class="td-num" style="color:#27ae60" title="Livrées">Liv.</th>
+            <th class="td-num" style="color:#e74c3c" title="Non livrables (ROUGE)">NL</th>
+            <th class="td-num" style="color:#3498db" title="Temporisées (BLEU)">Tmp</th>
+            <th class="td-num">%</th>
+          </tr>
+        </thead>
+        <tbody id="communeTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="mapContainer">
+    <div id="map"></div>
+
+    <!-- Volet Street View (aperçu au clic sur la carte, sans clé API Google Maps) -->
+    <div id="svPanel">
+      <div id="svHeader">
+        <div>
+          <div id="svTitle">📍 Aperçu Street View</div>
+          <div id="svCoords"></div>
+        </div>
+        <button id="svClose" class="exp-close" title="Fermer">×</button>
+      </div>
+      <div id="svBody">
+        <iframe id="svFrame" src="" loading="lazy" allowfullscreen title="Aperçu Street View"></iframe>
+      </div>
+    </div>
+
+    <!-- Compteur de sélection + rectangle de glissé (mode "Sélection") -->
+    <div id="selectionControl">
+      <span id="selectionCounter"></span>
+      <button id="btnClearSelection" onclick="clearSelection()" title="Effacer la sélection">Effacer</button>
+    </div>
+    <div id="selectionRect"></div>
+
+    <!-- Barre de recherche d'adresse / de REFER -->
+    <div id="geocoderControl">
+      <div id="geocoderRow">
+        <div id="geocoderModes">
+          <button type="button" class="gc-mode active" data-mode="adresse">Adresse</button>
+          <button type="button" class="gc-mode" data-mode="refer">REFER</button>
+        </div>
+        <div id="geocoderWrap">
+          <input id="geocoderInput" type="text" placeholder="Rechercher une adresse…" autocomplete="off" spellcheck="false">
+          <button id="geocoderClear" title="Effacer">×</button>
+          <button id="geocoderBtn" title="Rechercher">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+          <div id="geocoderSuggestions"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="emptyState">
+      <div class="empty-icon">🗺️</div>
+      <p>Importez un export VIACOL pour visualiser les données du territoire</p>
+      <button class="btn-empty" onclick="openModal()">
+        Charger les données
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FICHE COMMUNE (rendu à l'impression uniquement) ── -->
+<div id="printReport"></div>
+
+<script>
+'use strict';
+
+// ═════════════════════
+// ⚙️  CONFIGURATION
+// ═════════════════════
+const DATA_FILENAME = 'donnees_viacol.xlsx';
+const ACCESS_PWD_HASH = '2de700850296cf13fbe39a5be133a5e0a8c5a2cfbfd7c3d712f60fee6584c875';
+
+// ═══════════════════════════════════════════════
+// MODAL DE DÉMARRAGE
+// ═══════════════════════════════════════════════
+function openModal() {
+  const modal = document.getElementById('startModal');
+  modal.classList.remove('gone');
+  // Hint Échap visible seulement si des données sont déjà chargées
+  document.getElementById('smEscHint').style.display = allRows.length > 0 ? '' : 'none';
+  // Réinitialiser l'état de la carte GitHub
+  document.getElementById('smPwdSection').style.display = 'none';
+  document.getElementById('smcGithub').classList.remove('sm-active');
+  document.getElementById('smcLocal').classList.remove('sm-active');
+  document.getElementById('smPwdInput').value = '';
+  document.getElementById('smPwdErr').textContent = '';
+}
+
+function closeModal() {
+  document.getElementById('startModal').classList.add('gone');
+}
+
+// Clic sur carte GitHub → afficher champ mot de passe
+document.getElementById('smcGithub').addEventListener('click', () => {
+  document.getElementById('smcGithub').classList.add('sm-active');
+  document.getElementById('smcLocal').classList.remove('sm-active');
+  document.getElementById('smPwdSection').style.display = '';
+  setTimeout(() => document.getElementById('smPwdInput').focus(), 50);
+});
+
+// Clic sur carte fichier local → déclencher le sélecteur de fichier
+document.getElementById('smcLocal').addEventListener('click', () => {
+  document.getElementById('smcLocal').classList.add('sm-active');
+  document.getElementById('fileInput').click();
+});
+
+// Calcule le hash SHA-256 d'une chaîne (Web Crypto API)
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// Soumission mot de passe
+async function checkPwdAndLoad() {
+  const pwd = document.getElementById('smPwdInput').value;
+  const hash = await sha256(pwd);
+  if (hash !== ACCESS_PWD_HASH) {
+    document.getElementById('smPwdErr').textContent = '❌ Mot de passe incorrect';
+    document.getElementById('smPwdInput').select();
+    return;
+  }
+  document.getElementById('smPwdErr').textContent = '';
+  closeModal();
+  await loadFromGitHub();
+}
+
+document.getElementById('smBtnPwd').addEventListener('click', checkPwdAndLoad);
+document.getElementById('smPwdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPwdAndLoad();
+  if (e.key === 'Escape') e.stopPropagation(); // Ne pas fermer le modal en tapant Échap dans le champ
+});
+
+// Fermer sur Échap (seulement si des données sont déjà chargées)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && allRows.length > 0) closeModal();
+});
+
+// ═══════════════════════════════════════════════
+// CHARGEMENT DEPUIS GITHUB
+// ═══════════════════════════════════════════════
+async function fetchGitHubFileDate() {
+  try {
+    const host  = window.location.hostname; // ex: ncpa-dechets.github.io
+    const parts = host.split('.');
+    if (parts.length < 3 || parts[1] !== 'github') return null;
+    const owner = parts[0];
+    const repo  = window.location.pathname.split('/').filter(Boolean)[0];
+    if (!owner || !repo) return null;
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?path=${encodeURIComponent(DATA_FILENAME)}&per_page=1`;
+    const resp = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    if (!Array.isArray(data) || !data.length) return null;
+
+    return new Date(data[0].commit.committer.date);
+  } catch {
+    return null;
+  }
+}
+
+async function loadFromGitHub() {
+  // Construit l'URL relative au répertoire de la page courante
+  const pageBase = window.location.href.replace(/\/[^/?#]*(\?[^#]*)?(\#.*)?$/, '/');
+  const fileUrl  = pageBase + DATA_FILENAME;
+
+  showLoading('Téléchargement depuis GitHub…');
+  try {
+    const [resp, fileDate] = await Promise.all([
+      fetch(fileUrl),
+      fetchGitHubFileDate()
+    ]);
+
+    if (!resp.ok) {
+      throw new Error(`Erreur HTTP ${resp.status} — ${resp.statusText}\n(${fileUrl})`);
+    }
+
+    showLoading('Lecture du fichier Excel…');
+    const buffer = await resp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type:'array', cellDates:true });
+
+    if (!wb.SheetNames.includes('DONNEES_VIACOL')) {
+      hideLoading();
+      alert('Onglet "DONNEES_VIACOL" introuvable dans le fichier distant.\n'
+        + 'Onglets présents : ' + wb.SheetNames.join(', '));
+      openModal();
+      return;
+    }
+
+    showLoading('Traitement des données…');
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['DONNEES_VIACOL'], { defval:'' });
+
+    setTimeout(() => {
+      processData(rows, DATA_FILENAME + ' (GitHub)', fileDate);
+      hideLoading();
+    }, 50);
+
+  } catch (err) {
+    hideLoading();
+    alert('Impossible de charger le fichier depuis GitHub :\n\n' + err.message
+      + '\n\nVérifiez que le fichier "' + DATA_FILENAME + '" est bien présent dans le dépôt '
+      + 'au même niveau que cette page.');
+    openModal();
+  }
+}
+const CATS = ['livre','enquete','rouge','bleu','non_traite'];
+
+const COLORS = {
+  livre:      '#27ae60',
+  enquete:    '#f39c12',
+  rouge:      '#e74c3c',
+  bleu:       '#3498db',
+  non_traite: '#95a5a6'
+};
+const LABELS = {
+  livre:      'Livrées',
+  enquete:    'Enquêtées (non livrées)',
+  rouge:      'Non livrables (ROUGE)',
+  bleu:       'Temporisées (BLEU)',
+  non_traite: 'Pas de retour d\'enquête'
+};
+// Style appliqué aux points sélectionnés sur la carte (mode "Sélection")
+const SELECTION_STYLE = { color: '#f1c40f', weight: 2.5 };
+// Descriptions courtes (légende latérale) — langage grand public
+const DESCS = {
+  livre:      'Bacs déjà livrés (ordures ménagères et/ou tri)',
+  enquete:    'Adresse enquêtée, en attente de livraison',
+  rouge:      'Adresse non équipable (accès, local…)',
+  bleu:       'Livraison reportée (temporisée)',
+  non_traite: 'Enquête non retournée'
+};
+// Descriptions détaillées (modale « Comprendre la carte »)
+const HELP_DESCS = {
+  livre:      'Les bacs ont été livrés à cette adresse — ordures ménagères et/ou tri. La conteneurisation y est terminée.',
+  enquete:    'L\'adresse a été visitée (enquête réalisée) mais les bacs ne sont pas encore livrés. La livraison reste à programmer.',
+  rouge:      'Adresse qui ne peut pas être équipée en l\'état : problème d\'accès, absence de local, copropriété à organiser, etc. Une action est nécessaire.',
+  bleu:       'Livraison volontairement reportée (travaux en cours, situation particulière à régler avant de livrer).',
+  non_traite: 'Adresse n\'ayant pas donné de réponse à l\'enquête de dotation.'
+};
+const DEFAULT_VISIBLE = {
+  livre:true, enquete:true, rouge:true, bleu:true, non_traite:false
+};
+
+// ═══════════════════════════════════════════════
+// ÉTAT
+// ═══════════════════════════════════════════════
+let allRows        = [];
+let currentCommune = '';
+let visible        = { ...DEFAULT_VISIBLE };
+let communeStats   = {};
+let globalStats    = {};
+let chartGlobal    = null;
+let chartCommune   = null;
+let dataDateLabel  = '—';   // libellé de fraîcheur des données (bandeau + fiche)
+
+// ── Sélection multiple de points sur la carte (export ciblé) ──
+let selectionMode  = false;       // mode "Sélection" actif/inactif
+let selectedRefers = new Set();   // n° REFER des points sélectionnés
+let markersByRefer = new Map();   // REFER -> marker Leaflet courant (reconstruit à chaque rebuildMarkers())
+let rowsByRefer    = new Map();   // REFER -> row (construit dans processData(), indépendant des filtres)
+
+// ═══════════════════════════════════════════════
+// CARTE LEAFLET
+// ═══════════════════════════════════════════════
+const map = L.map('map', { center:[49.18,-0.20], zoom:11 });
+const cvs = L.canvas({ padding:0.5 });
+
+const tileCartoDB = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  { subdomains:'abcd', maxZoom:19, attribution:'© CartoDB' }
+).addTo(map);
+
+const tileIgn = L.tileLayer(
+  'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+  '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image%2Fjpeg' +
+  '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+  { maxNativeZoom:19, maxZoom:20,
+    attribution:"Orthophotos © <a href='https://www.ign.fr/'>IGN</a> / Géoplateforme" }
+);
+
+L.control.layers(
+  { '🗺️ Plan (CartoDB)': tileCartoDB, '🛰️ Satellite (IGN)': tileIgn },
+  {}, { position:'topright' }
+).addTo(map);
+
+// Bordure des points : fine bordure blanche sur fond satellite pour un meilleur contraste
+let markerStroke = { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+map.on('baselayerchange', e => {
+  markerStroke = (e.layer === tileIgn)
+    ? { color: '#fff', weight: 0.8 }
+    : { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+  rebuildMarkers();
+});
+
+// Groupes de couches
+const lGroups = {};
+CATS.forEach(c => {
+  lGroups[c] = L.layerGroup();
+  if (DEFAULT_VISIBLE[c]) lGroups[c].addTo(map);
+});
+
+// Légende permanente sur la carte (pour captures d'écran et impressions)
+const mapLegend = L.control({ position:'bottomleft' });
+mapLegend.onAdd = function () {
+  const div = L.DomUtil.create('div', 'map-legend');
+  div.innerHTML = '<div class="map-legend-title">Légende</div>'
+    + CATS.map(c =>
+        `<div class="map-legend-row">
+           <span class="map-legend-dot" style="background:${COLORS[c]}"></span>
+           <span class="map-legend-lbl">${LABELS[c]}</span>
+         </div>`).join('');
+  return div;
+};
+mapLegend.addTo(map);
+
+// ═══════════════════════════════════════════════
+// STREET VIEW (volet latéral, sans clé API Google Maps)
+// ═══════════════════════════════════════════════
+let svMarker = null;         // repère du point actuellement affiché en Street View
+let streetViewMode = false;  // mode "Street View" actif/inactif (bouton dédié, cf. toggleStreetViewMode)
+
+function openStreetView(lat, lng) {
+  document.getElementById('svFrame').src =
+    `https://maps.google.com/maps?q&layer=c&cbll=${lat},${lng}&cbp=0,0,0,0,0&output=svembed`;
+  document.getElementById('svCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  document.getElementById('svPanel').classList.add('open');
+
+  if (svMarker) map.removeLayer(svMarker);
+  svMarker = L.marker([lat, lng], {
+    icon: L.divIcon({ className: 'sv-pin', html: '📍', iconSize: [22, 22], iconAnchor: [11, 21] }),
+    interactive: false
+  }).addTo(map);
+}
+
+function closeStreetView() {
+  document.getElementById('svPanel').classList.remove('open');
+  document.getElementById('svFrame').src = ''; // stoppe le chargement en arrière-plan
+  if (svMarker) { map.removeLayer(svMarker); svMarker = null; }
+}
+
+document.getElementById('svClose').addEventListener('click', closeStreetView);
+
+// Active/désactive le mode "Street View" : tant qu'il n'est pas activé, cliquer sur la
+// carte ne fait rien (comportement normal de navigation). Mutuellement exclusif avec le
+// mode "Sélection", pour éviter toute ambiguïté sur ce que déclenche un clic.
+function toggleStreetViewMode() {
+  streetViewMode = !streetViewMode;
+  if (streetViewMode && selectionMode) toggleSelectionMode();
+  document.getElementById('btnStreetView').classList.toggle('active', streetViewMode);
+  document.getElementById('mapContainer').classList.toggle('streetview-mode', streetViewMode);
+}
+
+// Clic sur la carte : n'ouvre le volet Street View que si le mode est activé
+// (et jamais pendant un glissé de sélection rectangulaire).
+map.on('click', e => {
+  if (!streetViewMode || selectionMode) return;
+  openStreetView(e.latlng.lat, e.latlng.lng);
+});
+
+// ═══════════════════════════════════════════════
+// LOGIQUE DE CATÉGORISATION
+// ═══════════════════════════════════════════════
+function categorize(row) {
+  const livrable = ((row['LIVRABLE'] || '') + '').trim().toUpperCase();
+  const om  = parseFloat(row['OM_LIVRE'])  || 0;
+  const tri = parseFloat(row['TRI_LIVRE']) || 0;
+  const d   = row['DATE_ENQ'];
+
+  if (livrable === 'ROUGE') return 'rouge';
+  if (livrable === 'BLEU')  return 'bleu';
+  if (om > 0 || tri > 0)   return 'livre';
+  if (d && d !== '')        return 'enquete';
+  return 'non_traite';
+}
+
+// Normalise une valeur REFER en clé de comparaison (index, sélection, recherche).
+function referKey(v) { return ((v ?? '') + '').trim(); }
+
+function formatDate(v) {
+  if (!v || v === '') return '';
+  if (v instanceof Date) return v.toLocaleDateString('fr-FR');
+  return '' + v;
+}
+
+// Construit le contenu de l'infobulle / popup d'un point (réutilisé par les
+// marqueurs de la carte ET par la recherche d'adresse dans les données).
+function buildPointTip(row) {
+  const c        = categorize(row);
+  const adresse  = (row['ADRESSE']       || '') + '';
+  const commune  = ((row['COMMUNE']      || '') + '').trim();
+  const om       = row['OM_LIVRE']  || 0;
+  const tri      = row['TRI_LIVRE'] || 0;
+  const livrable = (row['LIVRABLE']      || '') + '';
+  const dateEnq  = formatDate(row['DATE_ENQ']);
+  const rs       = (row['RS']            || '') + '';
+  const typeLog  = (row['TYPE_LOGEMENT'] || '') + '';
+  const refer    = (row['REFER']         || '') + '';
+
+  let tip = `<strong>${adresse}</strong><br>`
+    + `<span style="color:#888">${commune}</span><br>`
+    + `<span style="color:${COLORS[c]}">●</span> <strong>${LABELS[c]}</strong><br>`
+    + `OM&nbsp;: ${om}&ensp;|&ensp;TRI&nbsp;: ${tri}`;
+  if (livrable) tip += `<br>Livrable&nbsp;: <b>${livrable}</b>`;
+  if (dateEnq)  tip += `<br>Enquête&nbsp;: ${dateEnq}`;
+  if (typeLog)  tip += `<br>Type&nbsp;: ${typeLog}`;
+  if (rs)       tip += `<br>RS&nbsp;: ${rs}`;
+  if (refer)    tip += `<br>Réf.&nbsp;: ${refer}`;
+  return tip;
+}
+
+// Base "livrable" servant au calcul de l'avancement : on EXCLUT les adresses
+// non livrables (rouge), qui ne peuvent pas être équipées en l'état. Les
+// temporisées (bleu) restent comptées car la pose y est seulement reportée.
+function baseLivrable(s) {
+  return Math.max(0, (s.total || 0) - (s.rouge || 0));
+}
+// Pourcentage d'avancement de la pose, calculé sur la base livrable.
+function avancementPct(s) {
+  const base = baseLivrable(s);
+  return base > 0 ? Math.round((s.livre || 0) / base * 100) : 0;
+}
+
+// Chiffres clés calculés sur un objet de stats (globalStats ou communeStats[commune]).
+function kpis(scope) {
+  const s = scope || {};
+  const total    = s.total || 0;
+  const posees    = s.livre || 0;
+  const aTraiter  = (s.enquete || 0) + (s.non_traite || 0);
+  const base      = baseLivrable(s);          // total hors non livrables
+  const pct       = avancementPct(s);         // avancement sur la base livrable
+  return { posees, total, base, pct, aTraiter };
+}
+
+// ═══════════════════════════════════════════════
+// RECONSTRUCTION DES MARQUEURS
+// ═══════════════════════════════════════════════
+function rebuildMarkers() {
+  CATS.forEach(c => lGroups[c].clearLayers());
+  markersByRefer.clear();
+
+  const rows = currentCommune
+    ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === currentCommune)
+    : allRows;
+
+  rows.forEach(row => {
+    const lat = parseFloat(row['LATITUDE']);
+    const lon = parseFloat(row['LONGITUDE']);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    const c     = categorize(row);
+    const refer = referKey(row['REFER']);
+    const selected = refer && selectedRefers.has(refer);
+
+    const m = L.circleMarker([lat, lon], {
+      radius:      selected ? 7 : 4,
+      renderer:    cvs,
+      fillColor:   COLORS[c],
+      color:       selected ? SELECTION_STYLE.color  : markerStroke.color,
+      weight:      selected ? SELECTION_STYLE.weight : markerStroke.weight,
+      fillOpacity: 0.85
+    });
+
+    m.bindTooltip(buildPointTip(row), { sticky:true, opacity:0.97 });
+
+    if (refer) {
+      markersByRefer.set(refer, m);
+      m.on('click', () => {
+        if (!selectionMode) return;
+        toggleMarkerSelection(refer, m);
+      });
+    }
+
+    lGroups[c].addLayer(m);
+  });
+
+  // Synchroniser la visibilité
+  CATS.forEach(c => {
+    if (visible[c]) { if (!map.hasLayer(lGroups[c])) lGroups[c].addTo(map); }
+    else            { if (map.hasLayer(lGroups[c]))  map.removeLayer(lGroups[c]); }
+  });
+}
+
+// Ajoute/retire un point de la sélection et met à jour son style sur la carte.
+function toggleMarkerSelection(refer, marker) {
+  if (selectedRefers.has(refer)) {
+    selectedRefers.delete(refer);
+    marker.setStyle({ radius: 4, color: markerStroke.color, weight: markerStroke.weight });
+  } else {
+    selectedRefers.add(refer);
+    marker.setStyle({ radius: 7, color: SELECTION_STYLE.color, weight: SELECTION_STYLE.weight });
+  }
+  updateSelectionUI();
+}
+
+// Vide entièrement la sélection courante et restaure le style normal des points concernés.
+function clearSelection() {
+  selectedRefers.forEach(refer => {
+    const m = markersByRefer.get(refer);
+    if (m) m.setStyle({ radius: 4, color: markerStroke.color, weight: markerStroke.weight });
+  });
+  selectedRefers.clear();
+  updateSelectionUI();
+}
+
+// Met à jour le compteur et le bouton "Effacer" en fonction de la sélection courante.
+function updateSelectionUI() {
+  const n = selectedRefers.size;
+  const counter = document.getElementById('selectionCounter');
+  counter.textContent = n > 0 ? `${n} sélectionné${n > 1 ? 's' : ''}` : '';
+  counter.classList.toggle('show', n > 0);
+  document.getElementById('btnClearSelection').classList.toggle('show', n > 0);
+}
+
+// Active/désactive le mode "Sélection" : au clic sur un point on le sélectionne, au glissé
+// sur la carte on sélectionne tout ce qui se trouve dans le rectangle tracé (cf. IIFE plus bas).
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  if (selectionMode && streetViewMode) toggleStreetViewMode();
+  document.getElementById('btnSelectMode').classList.toggle('active', selectionMode);
+  document.getElementById('mapContainer').classList.toggle('selection-mode', selectionMode);
+  if (selectionMode) map.dragging.disable(); else map.dragging.enable();
+}
+
+// ═══════════════════════════════════════════════
+// TRAITEMENT DES DONNÉES
+// ═══════════════════════════════════════════════
+function processData(rows, fname, fileDate) {
+  allRows        = rows;
+  currentCommune = '';
+
+  // Index REFER -> row (indépendant des filtres commune/catégorie) + reset de la sélection
+  rowsByRefer = new Map();
+  rows.forEach(r => {
+    const refer = referKey(r['REFER']);
+    if (refer) rowsByRefer.set(refer, r);
+  });
+  selectedRefers = new Set();
+
+  // Calcul des statistiques
+  const emptyStats = () => Object.fromEntries([...CATS, 'total'].map(k => [k, 0]));
+  globalStats  = emptyStats();
+  communeStats = {};
+  const communes = new Set();
+
+  rows.forEach(row => {
+    const commune = ((row['COMMUNE'] || '') + '').trim();
+    if (!commune) return;
+    communes.add(commune);
+    const c = categorize(row);
+    globalStats[c]++;
+    globalStats.total++;
+    if (!communeStats[commune]) communeStats[commune] = emptyStats();
+    communeStats[commune][c]++;
+    communeStats[commune].total++;
+  });
+
+  // Mise à jour du sélecteur commune
+  const sel = document.getElementById('communeFilter');
+  sel.innerHTML = '<option value="">— Toutes les communes —</option>';
+  [...communes].sort().forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+
+  // Mises à jour UI
+  updateLayerCounts(null);
+  updateProgress();
+  buildCharts();
+  buildCommuneTable();
+  rebuildMarkers();
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('btnExport').classList.add('show');
+  document.getElementById('btnSelectMode').classList.add('show');
+  document.getElementById('btnStreetView').classList.add('show');
+  document.getElementById('importInfo').textContent =
+    `${fname}  ·  ${rows.length.toLocaleString('fr-FR')} adresses  ·  ${communes.size} communes`;
+
+  const displayDate = fileDate instanceof Date && !isNaN(fileDate) ? fileDate : new Date();
+  const isFileDate  = fileDate instanceof Date && !isNaN(fileDate);
+  dataDateLabel = isFileDate
+    ? `Données du ${displayDate.toLocaleDateString('fr-FR')}`
+    : `Importé le ${displayDate.toLocaleDateString('fr-FR')} à ${displayDate.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  document.getElementById('dataInfo').textContent = dataDateLabel;
+
+  updateDashboard(null);
+}
+
+// ═══════════════════════════════════════════════
+// MISE À JOUR DES COMPTEURS
+// ═══════════════════════════════════════════════
+function updateLayerCounts(commune) {
+  const s = commune ? (communeStats[commune] || {}) : globalStats;
+  CATS.forEach(c => {
+    const el = document.getElementById('cnt-' + c);
+    if (el) el.textContent = ((s[c] || 0)).toLocaleString('fr-FR');
+  });
+}
+
+function updateProgress(commune) {
+  const s = commune ? (communeStats[commune] || {livre:0,total:0}) : globalStats;
+  const base = baseLivrable(s);                 // hors non livrables
+  const pct  = avancementPct(s);
+  document.getElementById('progressSec').style.display = '';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent =
+    `${(s.livre||0).toLocaleString('fr-FR')} / ${base.toLocaleString('fr-FR')} livrables`;
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+// ═══════════════════════════════════════════════
+// BANDEAU TABLEAU DE BORD
+// ═══════════════════════════════════════════════
+function updateDashboard(commune) {
+  const k = kpis(commune ? communeStats[commune] : globalStats);
+  document.getElementById('kpiPosees').textContent  = k.posees.toLocaleString('fr-FR');
+  document.getElementById('kpiPoseesSub').textContent = `sur ${k.total.toLocaleString('fr-FR')}`;
+  document.getElementById('kpiPct').textContent     = k.pct + '%';
+  document.getElementById('kpiTraiter').textContent = k.aTraiter.toLocaleString('fr-FR');
+  document.getElementById('kpiScope').textContent   = commune || 'Tout le territoire';
+  document.getElementById('kpiDate').textContent    = dataDateLabel;
+}
+
+// ═══════════════════════════════════════════════
+// FICHE COMMUNE IMPRIMABLE
+// ═══════════════════════════════════════════════
+// Génère un donut hors écran et renvoie son image (data URL).
+function communeDonutDataURL(commune) {
+  const s = communeStats[commune] || {};
+  const canvas = document.createElement('canvas');
+  canvas.width = 380; canvas.height = 380;
+  const tmp = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: CATS.map(c => LABELS[c]),
+      datasets: [{ data: CATS.map(c => s[c] || 0), backgroundColor: CATS.map(c => COLORS[c]), borderWidth: 0 }]
+    },
+    options: { responsive: false, animation: false, cutout: '58%', plugins: { legend: { display: false } } }
+  });
+  const url = tmp.toBase64Image();
+  tmp.destroy();
+  return url;
+}
+
+function buildCommuneReport(commune) {
+  const s = communeStats[commune] || {};
+  const k = kpis(s);
+  const rows = allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune);
+  const aTraiter = rows.filter(r => { const c = categorize(r); return c === 'enquete' || c === 'non_traite'; });
+
+  const legendHtml = CATS.map(c =>
+    `<div class="pr-leg-row"><span class="pr-leg-dot" style="background:${COLORS[c]}"></span>${LABELS[c]} : <b>${(s[c] || 0).toLocaleString('fr-FR')}</b></div>`
+  ).join('');
+
+  const listHtml = aTraiter.length
+    ? aTraiter
+        .sort((a, b) => ((a['ADRESSE'] || '') + '').localeCompare((b['ADRESSE'] || '') + '', 'fr'))
+        .map(r => {
+          const c = categorize(r);
+          return `<tr><td>${(r['ADRESSE'] || '') + ''}</td>`
+            + `<td><span class="pr-dot" style="background:${COLORS[c]}"></span>${LABELS[c]}</td>`
+            + `<td>${(r['RS'] || '') + ''}</td></tr>`;
+        }).join('')
+    : '<tr><td colspan="3" class="pr-empty">Aucune adresse à traiter pour cette commune.</td></tr>';
+
+  document.getElementById('printReport').innerHTML =
+    `<div class="pr-head">
+       <div class="pr-badge">NCPA</div>
+       <div>
+         <div class="pr-title">Suivi conteneurisation — ${commune}</div>
+         <div class="pr-date">${dataDateLabel}</div>
+       </div>
+     </div>
+     <div class="pr-kpis">
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.posees.toLocaleString('fr-FR')} / ${k.total.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses équipées</span></div>
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.pct}%</span><span class="pr-kpi-lbl">Avancement de la livraison (hors non livrables)</span></div>
+       <div class="pr-kpi"><span class="pr-kpi-val">${k.aTraiter.toLocaleString('fr-FR')}</span><span class="pr-kpi-lbl">Adresses à traiter</span></div>
+     </div>
+     <div class="pr-chart-block">
+       <img class="pr-chart" src="${communeDonutDataURL(commune)}" alt="Répartition des adresses">
+       <div class="pr-legend">${legendHtml}</div>
+     </div>
+     <div class="pr-list-title">Adresses à traiter — enquêtées &amp; sans retour d'enquête (${aTraiter.length})</div>
+     <table class="pr-table">
+       <thead><tr><th style="width:48%">Adresse</th><th style="width:27%">Statut</th><th>Remarque</th></tr></thead>
+       <tbody>${listHtml}</tbody>
+     </table>
+     <div class="pr-foot">Document généré le ${new Date().toLocaleDateString('fr-FR')} · NCPA — Suivi conteneurisation VIACOL</div>`;
+}
+
+async function printCommuneReport() {
+  if (!currentCommune) return;
+  buildCommuneReport(currentCommune);
+
+  // Attendre que l'image du donut soit décodée avant d'imprimer,
+  // sinon window.print() peut se déclencher avant le rendu (graphique vide).
+  const img = document.querySelector('#printReport .pr-chart');
+  if (img) {
+    try {
+      if (img.decode) await img.decode();
+      else if (!img.complete) await new Promise(res => { img.onload = img.onerror = res; });
+    } catch (e) { /* on imprime quand même */ }
+  }
+  window.print();
+}
+
+// ═══════════════════════════════════════════════
+// MODALE « COMPRENDRE LA CARTE »
+// ═══════════════════════════════════════════════
+function openHelpModal() {
+  const container = document.getElementById('helpCats');
+  if (!container.dataset.built) {
+    CATS.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'help-cat';
+      div.innerHTML =
+        `<span class="help-cat-dot" style="background:${COLORS[c]}"></span>
+         <span class="help-cat-txt">
+           <span class="help-cat-name">${LABELS[c]}</span>
+           <span class="help-cat-desc">${HELP_DESCS[c]}</span>
+         </span>`;
+      container.appendChild(div);
+    });
+    container.dataset.built = '1';
+  }
+  document.getElementById('helpModal').classList.remove('gone');
+}
+function closeHelpModal() {
+  document.getElementById('helpModal').classList.add('gone');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('helpModal').classList.contains('gone')) {
+    closeHelpModal();
+  }
+});
+document.getElementById('helpModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('helpModal')) closeHelpModal();
+});
+
+// ═══════════════════════════════════════════════
+// CONSTRUCTION DES ITEMS DE LÉGENDE
+// ═══════════════════════════════════════════════
+function buildLayerList() {
+  const container = document.getElementById('layerList');
+  CATS.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'layer-item' + (visible[c] ? '' : ' off');
+    div.dataset.c  = c;
+    div.innerHTML  =
+      `<span class="layer-dot" style="background:${COLORS[c]}"></span>
+       <span class="layer-text">
+         <span class="layer-name">${LABELS[c]}</span>
+         <span class="layer-sub">${DESCS[c]}</span>
+       </span>
+       <span class="layer-cnt" id="cnt-${c}">—</span>`;
+    div.addEventListener('click', () => {
+      visible[c] = !visible[c];
+      div.classList.toggle('off');
+      if (visible[c]) lGroups[c].addTo(map);
+      else map.removeLayer(lGroups[c]);
+    });
+    container.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// GRAPHIQUES CHART.JS
+// ═══════════════════════════════════════════════
+function buildCharts() {
+  Chart.defaults.color      = '#7a9aaa';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+  Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+  Chart.defaults.font.size   = 11;
+
+  if (chartGlobal)  { chartGlobal.destroy();  chartGlobal  = null; }
+  if (chartCommune) { chartCommune.destroy(); chartCommune = null; }
+
+  // ── Donut global ──
+  const ctx1 = document.getElementById('chartGlobal').getContext('2d');
+  chartGlobal = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels:   CATS.map(c => LABELS[c]),
+      datasets: [{
+        data:            CATS.map(c => globalStats[c] || 0),
+        backgroundColor: CATS.map(c => COLORS[c]),
+        borderWidth:     0
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true, cutout:'62%',
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = globalStats.total > 0
+                ? Math.round(ctx.raw / globalStats.total * 100) : 0;
+              return `  ${ctx.raw.toLocaleString('fr-FR')} adresses (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // ── Barres horizontales empilées par commune ──
+  const communes = Object.keys(communeStats).filter(Boolean).sort();
+  const barH = Math.max(communes.length * 24 + 50, 320);
+  document.getElementById('chartCommuneWrap').style.height = barH + 'px';
+
+  const ctx2 = document.getElementById('chartCommune').getContext('2d');
+  chartCommune = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels:   communes,
+      datasets: CATS.map(c => ({
+        label:           LABELS[c],
+        data:            communes.map(com => communeStats[com][c] || 0),
+        backgroundColor: COLORS[c],
+        stack:           's',
+        borderWidth:     0
+      }))
+    },
+    options: {
+      indexAxis: 'y',
+      responsive:true, maintainAspectRatio:false,
+      scales: {
+        x: {
+          stacked: true,
+          grid:  { color:'rgba(255,255,255,0.04)' },
+          ticks: { color:'#4d6880', font:{ size:10 } }
+        },
+        y: {
+          stacked: true,
+          grid:  { display:false },
+          ticks: { color:'#8aaec6', font:{ size:10 } }
+        }
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// TABLEAU DES COMMUNES
+// ═══════════════════════════════════════════════
+function buildCommuneTable() {
+  const tbody = document.getElementById('communeTbody');
+  tbody.innerHTML = '';
+
+  const sorted = Object.keys(communeStats)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+
+  sorted.forEach(commune => {
+    const s   = communeStats[commune];
+    const pct = avancementPct(s);   // avancement hors non livrables
+    const pctColor  = pct >= 80 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c';
+    const pctBg     = pct >= 80 ? 'rgba(39,174,96,.15)' : pct >= 50 ? 'rgba(243,156,18,.15)' : 'rgba(231,76,60,.15)';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="td-commune">${commune}</td>
+       <td class="td-num">${s.total.toLocaleString('fr-FR')}</td>
+       <td class="td-num" style="color:#27ae60">${s.livre}</td>
+       <td class="td-num" style="color:#e74c3c">${s.rouge}</td>
+       <td class="td-num" style="color:#3498db">${s.bleu}</td>
+       <td class="td-num">
+         <span class="pct-badge" style="color:${pctColor};background:${pctBg}">${pct}%</span>
+       </td>`;
+
+    // Clic → filtrer + zoomer
+    tr.addEventListener('click', () => {
+      document.getElementById('communeFilter').value = commune;
+      document.getElementById('communeFilter').dispatchEvent(new Event('change'));
+      document.querySelector('.tab[data-tab="legende"]').click();
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// FILTRE COMMUNE
+// ═══════════════════════════════════════════════
+function applyFilter(commune) {
+  currentCommune = commune;
+
+  // Badge + bouton reset
+  const badge = document.getElementById('filterBadge');
+  const btnReset = document.getElementById('btnResetFilter');
+  const btnPrint = document.getElementById('btnPrintReport');
+  if (commune) {
+    badge.textContent = `Affichage : ${commune}`;
+    badge.classList.add('show');
+    btnReset.classList.add('show');
+    btnPrint.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+    btnReset.classList.remove('show');
+    btnPrint.classList.remove('show');
+  }
+
+  showLoading(commune ? `Filtrage sur ${commune}…` : 'Réinitialisation…');
+  setTimeout(() => {
+    rebuildMarkers();
+    updateLayerCounts(commune || null);
+    updateProgress(commune || null);
+    updateDashboard(commune || null);
+
+    if (commune) {
+      const pts = allRows
+        .filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+        .map(r => [parseFloat(r['LATITUDE']), parseFloat(r['LONGITUDE'])])
+        .filter(([a, b]) => !isNaN(a) && !isNaN(b));
+      if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding:[40,40] });
+    }
+    hideLoading();
+  }, 30);
+}
+
+document.getElementById('communeFilter').addEventListener('change', function() {
+  applyFilter(this.value);
+});
+
+document.getElementById('btnResetFilter').addEventListener('click', () => {
+  document.getElementById('communeFilter').value = '';
+  applyFilter('');
+});
+
+// ═══════════════════════════════════════════════
+// ONGLETS
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════
+// IMPORT FICHIER
+// ═══════════════════════════════════════════════
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  closeModal(); // Fermer le modal dès qu'un fichier est sélectionné
+  showLoading('Lecture du fichier Excel…');
+
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const wb = XLSX.read(evt.target.result, { type:'array', cellDates:true });
+
+      if (!wb.SheetNames.includes('DONNEES_VIACOL')) {
+        hideLoading();
+        alert('Onglet "DONNEES_VIACOL" introuvable.\n'
+          + 'Onglets présents : ' + wb.SheetNames.join(', '));
+        return;
+      }
+
+      showLoading('Traitement de ' + file.name + '…');
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['DONNEES_VIACOL'], { defval:'' });
+      const localDate = file.lastModified ? new Date(file.lastModified) : null;
+
+      setTimeout(() => {
+        processData(rows, file.name, localDate);
+        hideLoading();
+      }, 50);
+    } catch (err) {
+      hideLoading();
+      alert('Erreur lors de la lecture : ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = ''; // Permet de re-sélectionner le même fichier
+});
+
+// ═══════════════════════════════════════════════
+// CHARGEMENT
+// ═══════════════════════════════════════════════
+function showLoading(msg) {
+  document.getElementById('loadingMsg').textContent = msg || 'Chargement…';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+// GEOCODEUR (adresses via Nominatim / OpenStreetMap, ou n° de REFER)
+// ═══════════════════════════════════════════════
+(function () {
+  const input       = document.getElementById('geocoderInput');
+  const btnSearch   = document.getElementById('geocoderBtn');
+  const btnClear    = document.getElementById('geocoderClear');
+  const suggestions = document.getElementById('geocoderSuggestions');
+  const modeBtns    = document.querySelectorAll('.gc-mode');
+
+  let debounceTimer = null;
+  let focusIndex    = -1;
+  let searchMarker  = null;
+  let searchMode    = 'adresse';   // 'adresse' | 'refer'
+
+  function debounce(fn, ms) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fn, ms);
+  }
+
+  function closeSuggestions() {
+    suggestions.classList.remove('open');
+    suggestions.innerHTML = '';
+    focusIndex = -1;
+  }
+
+  function showSearchMarker(lat, lon, label) {
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.circleMarker([lat, lon], {
+      radius: 8,
+      color: '#fff',
+      weight: 2.5,
+      fillColor: '#B91E27',
+      fillOpacity: 0.9
+    }).addTo(map).bindTooltip(label, { permanent: false, opacity: 0.95 }).openTooltip();
+  }
+
+  async function geocode(q) {
+    if (!q.trim()) return;
+    const url = 'https://nominatim.openstreetmap.org/search'
+      + '?format=json&q=' + encodeURIComponent(q)
+      + '&countrycodes=fr&limit=6&addressdetails=1'
+      + '&viewbox=-1.8,48.7,0.8,49.6';
+    try {
+      const resp = await fetch(url, {
+        headers: { 'Accept-Language': 'fr', 'User-Agent': 'NCPA-Conteneurisation/1.0' }
+      });
+      return await resp.json();
+    } catch { return []; }
+  }
+
+  function buildDisplayName(item) {
+    const a = item.address || {};
+    const main = a.house_number
+      ? (a.house_number + ' ' + (a.road || '')).trim()
+      : (a.road || a.pedestrian || a.footway || item.display_name.split(',')[0]);
+    const city = a.city || a.town || a.village || a.municipality || '';
+    const postcode = a.postcode || '';
+    const sub = [postcode, city].filter(Boolean).join(' ');
+    return { main: main || item.display_name.split(',')[0], sub };
+  }
+
+  // Recherche dans les adresses chargées (export VIACOL)
+  function searchLocalData(q) {
+    const needle = q.trim().toLowerCase();
+    if (needle.length < 3 || !allRows.length) return [];
+    const out = [];
+    for (const row of allRows) {
+      const adr = ((row['ADRESSE'] || '') + '').toLowerCase();
+      const com = ((row['COMMUNE'] || '') + '').toLowerCase();
+      if (adr.includes(needle) || com.includes(needle)) {
+        const lat = parseFloat(row['LATITUDE']);
+        const lon = parseFloat(row['LONGITUDE']);
+        if (isNaN(lat) || isNaN(lon)) continue;
+        out.push(row);
+        if (out.length >= 6) break;
+      }
+    }
+    return out;
+  }
+
+  // localRows : adresses trouvées dans les données ; osmResults : null = OSM en cours, [] = aucun
+  function renderSuggestions(localRows, osmResults) {
+    suggestions.innerHTML = '';
+    focusIndex = -1;
+    const frag = document.createDocumentFragment();
+
+    if (localRows && localRows.length) {
+      const h = document.createElement('div');
+      h.className = 'gc-group';
+      h.textContent = 'Dans les données';
+      frag.appendChild(h);
+      localRows.forEach(row => {
+        const c   = categorize(row);
+        const adr = ((row['ADRESSE'] || '') + '').trim();
+        const com = ((row['COMMUNE'] || '') + '').trim();
+        const div = document.createElement('div');
+        div.className = 'gc-item';
+        div.innerHTML =
+          `<div class="gc-item-main"><span class="gc-item-status" style="background:${COLORS[c]}"></span>${adr}</div>`
+          + `<div class="gc-item-sub">${com} — ${LABELS[c]}</div>`;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectLocalResult(row); });
+        frag.appendChild(div);
+      });
+    }
+
+    if (osmResults === null) {
+      const note = document.createElement('div');
+      note.className = 'gc-item-notfound';
+      note.textContent = 'Recherche d\'autres adresses…';
+      frag.appendChild(note);
+    } else if (osmResults.length) {
+      const h = document.createElement('div');
+      h.className = 'gc-group';
+      h.textContent = 'Autres adresses (carte)';
+      frag.appendChild(h);
+      osmResults.forEach(item => {
+        const { main, sub } = buildDisplayName(item);
+        const div = document.createElement('div');
+        div.className = 'gc-item';
+        div.innerHTML = `<div class="gc-item-main">${main}</div>`
+          + (sub ? `<div class="gc-item-sub">${sub}</div>` : '');
+        div.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectResult(item, main + (sub ? ', ' + sub : ''));
+        });
+        frag.appendChild(div);
+      });
+    }
+
+    if (!frag.childNodes.length) {
+      suggestions.innerHTML = '<div class="gc-item-notfound">Aucun résultat trouvé</div>';
+      suggestions.classList.add('open');
+      return;
+    }
+    suggestions.appendChild(frag);
+    suggestions.classList.add('open');
+  }
+
+  function selectResult(item, label) {
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    map.setView([lat, lon], 17, { animate: true });
+    showSearchMarker(lat, lon, label);
+    input.value = label;
+    btnClear.classList.add('show');
+    closeSuggestions();
+  }
+
+  // Sélection d'une adresse trouvée dans les données → centre + popup de statut
+  function selectLocalResult(row) {
+    const lat = parseFloat(row['LATITUDE']);
+    const lon = parseFloat(row['LONGITUDE']);
+    map.setView([lat, lon], 17, { animate: true });
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.circleMarker([lat, lon], {
+      radius: 9, color: '#fff', weight: 2.5,
+      fillColor: COLORS[categorize(row)], fillOpacity: 0.95
+    }).addTo(map).bindPopup(buildPointTip(row)).openPopup();
+    input.value = ((row['ADRESSE'] || '') + '').trim();
+    btnClear.classList.add('show');
+    closeSuggestions();
+  }
+
+  // ── Mode REFER : correspondance exacte sur l'identifiant, sans appel Nominatim ──
+
+  // rowsByRefer est indépendant du filtre commune : un REFER d'une autre commune
+  // que celle affichée reste donc trouvable.
+  function lookupRefer(q) {
+    const k = referKey(q);
+    return k ? (rowsByRefer.get(k) || null) : null;
+  }
+
+  function renderReferResult(row, q) {
+    suggestions.innerHTML = '';
+    focusIndex = -1;
+
+    if (!row) {
+      const nf = document.createElement('div');
+      nf.className = 'gc-item-notfound';
+      nf.textContent = 'REFER introuvable : ' + q;   // textContent : la saisie n'est pas du HTML
+      suggestions.appendChild(nf);
+      suggestions.classList.add('open');
+      return;
+    }
+
+    const c   = categorize(row);
+    const adr = ((row['ADRESSE'] || '') + '').trim();
+    const com = ((row['COMMUNE'] || '') + '').trim();
+
+    const h = document.createElement('div');
+    h.className = 'gc-group';
+    h.textContent = 'Référence ' + referKey(row['REFER']);
+    suggestions.appendChild(h);
+
+    const div = document.createElement('div');
+    div.className = 'gc-item';
+    div.innerHTML =
+      `<div class="gc-item-main"><span class="gc-item-status" style="background:${COLORS[c]}"></span>${adr}</div>`
+      + `<div class="gc-item-sub">${com} — ${LABELS[c]}</div>`;
+    div.addEventListener('mousedown', e => { e.preventDefault(); selectReferResult(row); });
+    suggestions.appendChild(div);
+    suggestions.classList.add('open');
+  }
+
+  // Affiche la fiche d'un point non localisable (LATITUDE/LONGITUDE absentes ou
+  // illisibles dans l'export) : la carte ne bouge pas, aucun marqueur n'est créé.
+  function renderReferCard(row) {
+    suggestions.innerHTML = '';
+    focusIndex = -1;
+    const card = document.createElement('div');
+    card.className = 'gc-card';
+    card.innerHTML = buildPointTip(row)
+      + '<div class="gc-card-warn">Coordonnées manquantes — impossible de localiser sur la carte.</div>';
+    suggestions.appendChild(card);
+    suggestions.classList.add('open');
+  }
+
+  function selectReferResult(row) {
+    const lat = parseFloat(row['LATITUDE']);
+    const lon = parseFloat(row['LONGITUDE']);
+    if (isNaN(lat) || isNaN(lon)) { renderReferCard(row); return; }
+    selectLocalResult(row);                   // recentrage + marqueur coloré + popup
+    input.value = referKey(row['REFER']);     // on garde le REFER saisi à l'écran, pas l'adresse
+  }
+
+  // Bascule Adresse / REFER
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      searchMode = btn.dataset.mode;
+      modeBtns.forEach(b => b.classList.toggle('active', b === btn));
+      input.value = '';
+      btnClear.classList.remove('show');
+      closeSuggestions();
+      input.placeholder = searchMode === 'refer'
+        ? 'Rechercher un n° de REFER…'
+        : 'Rechercher une adresse…';
+      input.setAttribute('inputmode', searchMode === 'refer' ? 'numeric' : 'text');
+      input.focus();
+    });
+  });
+
+  // Saisie → suggestions après 400 ms
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    btnClear.classList.toggle('show', q.length > 0);
+    if (searchMode === 'refer') {
+      // Simple lecture de Map : pas de seuil de 3 caractères ni d'appel réseau.
+      if (!q) { closeSuggestions(); return; }
+      debounce(() => renderReferResult(lookupRefer(q), q), 250);
+      return;
+    }
+    if (q.length < 3) { closeSuggestions(); return; }
+    debounce(async () => {
+      const local = searchLocalData(q);
+      renderSuggestions(local, null);          // affichage immédiat des données locales
+      const osm = await geocode(q);
+      renderSuggestions(local, osm);           // puis ajout des résultats OSM
+    }, 400);
+  });
+
+  // Navigation clavier dans la liste
+  input.addEventListener('keydown', e => {
+    const items = suggestions.querySelectorAll('.gc-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusIndex = Math.min(focusIndex + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusIndex = Math.max(focusIndex - 1, 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (focusIndex >= 0 && items[focusIndex]) {
+        items[focusIndex].dispatchEvent(new MouseEvent('mousedown'));
+      } else {
+        triggerSearch();
+      }
+      return;
+    } else if (e.key === 'Escape') {
+      closeSuggestions();
+      input.blur();
+      return;
+    }
+    items.forEach((el, i) => el.classList.toggle('focused', i === focusIndex));
+    if (items[focusIndex]) items[focusIndex].scrollIntoView({ block: 'nearest' });
+  });
+
+  // Bouton loupe → recherche directe sur le 1er résultat
+  async function triggerSearch() {
+    const q = input.value.trim();
+    if (!q) return;
+    if (searchMode === 'refer') {
+      const row = lookupRefer(q);
+      if (row) selectReferResult(row); else renderReferResult(null, q);
+      return;
+    }
+    const local = searchLocalData(q);
+    if (local.length) { selectLocalResult(local[0]); return; }
+    closeSuggestions();
+    const res = await geocode(q);
+    if (res.length) {
+      const { main, sub } = buildDisplayName(res[0]);
+      selectResult(res[0], main + (sub ? ', ' + sub : ''));
+    } else {
+      suggestions.innerHTML = '<div class="gc-item-notfound">Aucun résultat trouvé</div>';
+      suggestions.classList.add('open');
+    }
+  }
+
+  btnSearch.addEventListener('click', triggerSearch);
+
+  // Bouton × → effacer
+  btnClear.addEventListener('click', () => {
+    input.value = '';
+    btnClear.classList.remove('show');
+    closeSuggestions();
+    if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; }
+    input.focus();
+  });
+
+  // Fermer les suggestions si clic ailleurs
+  document.addEventListener('click', e => {
+    if (!document.getElementById('geocoderControl').contains(e.target)) closeSuggestions();
+  });
+
+  // Masquer la barre quand l'emptyState est visible
+  const observer = new MutationObserver(() => {
+    const empty = document.getElementById('emptyState');
+    document.getElementById('geocoderControl').style.display =
+      empty && empty.style.display !== 'none' ? 'none' : '';
+  });
+  observer.observe(document.getElementById('emptyState'), { attributes: true, attributeFilter: ['style'] });
+  document.getElementById('geocoderControl').style.display = 'none'; // caché par défaut
+})();
+
+// ═══════════════════════════════════════════════
+// SÉLECTION RECTANGULAIRE (glissé sur la carte en mode "Sélection")
+// ═══════════════════════════════════════════════
+(function () {
+  const mapEl        = document.getElementById('map');
+  const mapContainer = document.getElementById('mapContainer');
+  const rectEl        = document.getElementById('selectionRect');
+  let dragStart = null; // {x, y} en coordonnées écran (clientX/clientY)
+
+  mapEl.addEventListener('mousedown', e => {
+    if (!selectionMode) return;
+    dragStart = { x: e.clientX, y: e.clientY };
+    rectEl.style.width  = '0px';
+    rectEl.style.height = '0px';
+    rectEl.style.display = 'block';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragStart) return;
+    const x1 = Math.min(dragStart.x, e.clientX), x2 = Math.max(dragStart.x, e.clientX);
+    const y1 = Math.min(dragStart.y, e.clientY), y2 = Math.max(dragStart.y, e.clientY);
+    const cRect = mapContainer.getBoundingClientRect();
+    rectEl.style.left   = (x1 - cRect.left) + 'px';
+    rectEl.style.top    = (y1 - cRect.top)  + 'px';
+    rectEl.style.width  = (x2 - x1) + 'px';
+    rectEl.style.height = (y2 - y1) + 'px';
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!dragStart) return;
+    const x1 = Math.min(dragStart.x, e.clientX), x2 = Math.max(dragStart.x, e.clientX);
+    const y1 = Math.min(dragStart.y, e.clientY), y2 = Math.max(dragStart.y, e.clientY);
+    dragStart = null;
+    rectEl.style.display = 'none';
+
+    // Un simple clic (pas de vrai glissé) est laissé au handler click du marqueur.
+    if (Math.abs(x2 - x1) < 4 && Math.abs(y2 - y1) < 4) return;
+
+    const mapRect = mapEl.getBoundingClientRect();
+    const bounds = L.latLngBounds(
+      map.containerPointToLatLng(L.point(x1 - mapRect.left, y1 - mapRect.top)),
+      map.containerPointToLatLng(L.point(x2 - mapRect.left, y2 - mapRect.top))
+    );
+
+    markersByRefer.forEach((marker, refer) => {
+      const row = rowsByRefer.get(refer);
+      if (!row || !visible[categorize(row)]) return;
+      if (bounds.contains(marker.getLatLng()) && !selectedRefers.has(refer)) {
+        selectedRefers.add(refer);
+        marker.setStyle({ radius: 7, color: SELECTION_STYLE.color, weight: SELECTION_STYLE.weight });
+      }
+    });
+    updateSelectionUI();
+  });
+})();
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+let exportFmt = 'csv';
+
+function openExportModal() {
+  if (!allRows.length) return;
+
+  // Contexte périmètre
+  const commune = currentCommune;
+  const rows = commune
+    ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+    : allRows;
+  const ctxEl = document.getElementById('expContext');
+  ctxEl.innerHTML = commune
+    ? `Commune filtrée : <span>${commune}</span> — <span>${rows.length.toLocaleString('fr-FR')}</span> adresses`
+    : `Toutes les communes — <span>${rows.length.toLocaleString('fr-FR')}</span> adresses`;
+
+  // Construire les checkboxes
+  const container = document.getElementById('expChecks');
+  container.innerHTML = '';
+  CATS.forEach(c => {
+    const count = rows.filter(r => categorize(r) === c).length;
+    const label = document.createElement('label');
+    label.className = 'exp-check-row';
+    label.innerHTML =
+      `<input type="checkbox" data-cat="${c}" checked>
+       <span class="exp-dot" style="background:${COLORS[c]}"></span>
+       <span class="exp-check-lbl">${LABELS[c]}</span>
+       <span class="exp-check-cnt">${count.toLocaleString('fr-FR')}</span>`;
+    label.querySelector('input').addEventListener('change', syncExpAllCheckbox);
+    container.appendChild(label);
+  });
+
+  document.getElementById('expChkAll').checked = true;
+
+  // Option "Uniquement les points sélectionnés" : reflète la sélection courante à chaque ouverture
+  document.getElementById('expSelCount').textContent = selectedRefers.size;
+  const selRadio = document.getElementById('expSrcSelection');
+  const selRow   = selRadio.closest('.exp-all-row');
+  if (selectedRefers.size === 0) {
+    selRadio.disabled = true;
+    selRow.classList.add('disabled');
+    document.getElementById('expSrcFiltered').checked = true;
+  } else {
+    selRadio.disabled = false;
+    selRow.classList.remove('disabled');
+  }
+
+  onExportSourceChange();
+  document.getElementById('exportModal').classList.remove('gone');
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').classList.add('gone');
+}
+
+function toggleAllExportCats(checked) {
+  document.querySelectorAll('#expChecks input[type=checkbox]').forEach(cb => {
+    cb.checked = checked;
+  });
+  updateExportSubmitState();
+}
+
+function syncExpAllCheckbox() {
+  const all  = document.querySelectorAll('#expChecks input[type=checkbox]');
+  const checked = [...all].filter(cb => cb.checked);
+  document.getElementById('expChkAll').checked = checked.length === all.length;
+  document.getElementById('expChkAll').indeterminate = checked.length > 0 && checked.length < all.length;
+  updateExportSubmitState();
+}
+
+function onExportSourceChange() {
+  const useSelection = document.getElementById('expSrcSelection').checked;
+  document.querySelectorAll('#expChecks input[type=checkbox]').forEach(cb => cb.disabled = useSelection);
+  document.getElementById('expChkAll').disabled = useSelection;
+  document.getElementById('expCatSection').classList.toggle('disabled', useSelection);
+  updateExportSubmitState();
+}
+
+function updateExportSubmitState() {
+  const useSelection = document.getElementById('expSrcSelection').checked;
+  const any = useSelection
+    ? selectedRefers.size > 0
+    : [...document.querySelectorAll('#expChecks input[type=checkbox]')].some(cb => cb.checked);
+  document.getElementById('expSubmit').disabled = !any;
+}
+
+function setExportFmt(fmt) {
+  exportFmt = fmt;
+  document.getElementById('expFmtCsv').classList.toggle('active',  fmt === 'csv');
+  document.getElementById('expFmtXlsx').classList.toggle('active', fmt === 'xlsx');
+}
+
+function doExport() {
+  const useSelection = document.getElementById('expSrcSelection').checked;
+  const commune = currentCommune;
+
+  let rows;
+  if (useSelection) {
+    rows = [...selectedRefers].map(refer => rowsByRefer.get(refer)).filter(Boolean);
+  } else {
+    const selectedCats = new Set(
+      [...document.querySelectorAll('#expChecks input[type=checkbox]')]
+        .filter(cb => cb.checked).map(cb => cb.dataset.cat)
+    );
+    rows = commune
+      ? allRows.filter(r => ((r['COMMUNE'] || '') + '').trim() === commune)
+      : allRows;
+    rows = rows.filter(r => selectedCats.has(categorize(r)));
+  }
+
+  if (!rows.length) { alert('Aucune adresse à exporter avec ces filtres.'); return; }
+
+  // Ajouter une colonne CATEGORIE calculée
+  const enriched = rows.map(r => ({ ...r, CATEGORIE: LABELS[categorize(r)] }));
+
+  const datePart = new Date().toISOString().slice(0,10);
+  const commPart = useSelection ? '_selection' : (commune ? '_' + commune.replace(/\s+/g,'_') : '');
+  const basename = `export_viacol${commPart}_${datePart}`;
+
+  if (exportFmt === 'xlsx') {
+    const ws = XLSX.utils.json_to_sheet(enriched);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Export');
+    XLSX.writeFile(wb, basename + '.xlsx');
+  } else {
+    // CSV UTF-8 avec BOM pour Excel
+    if (!enriched.length) return;
+    const cols = Object.keys(enriched[0]);
+    const escape = v => {
+      const s = (v instanceof Date) ? v.toLocaleDateString('fr-FR') : String(v ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [cols.join(','), ...enriched.map(r => cols.map(c => escape(r[c])).join(','))];
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = basename + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  closeExportModal();
+}
+
+// Fermer le modal export sur Échap
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('exportModal').classList.contains('gone')) {
+    closeExportModal();
+  }
+});
+document.getElementById('exportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('exportModal')) closeExportModal();
+});
+
+// ═══════════════════════════════════════════════
+// INITIALISATION
+// ═══════════════════════════════════════════════
+buildLayerList();
+openModal(); // Afficher le modal de démarrage
+</script>
+</body>
+</html>
