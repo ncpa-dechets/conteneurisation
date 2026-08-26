@@ -6,6 +6,9 @@
 <title>NCPA — Suivi Conteneurisation VIACOL</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.min.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -501,6 +504,14 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 .map-legend-row:last-child{margin-bottom:0}
 .map-legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.25)}
 .map-legend-lbl{font-size:11px;color:#c0d8e8}
+.map-notice{
+  position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+  z-index:1000;max-width:80%;
+  background:#192534;border:1px solid #2d4055;border-radius:6px;
+  padding:7px 12px;box-shadow:0 3px 14px rgba(0,0,0,.35);
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  font-size:11px;color:#c0d8e8;pointer-events:none;opacity:.95
+}
 
 /* ── STARTUP MODAL ── */
 #startModal{
@@ -1109,10 +1120,10 @@ let rowsByRefer    = new Map();   // REFER -> row (construit dans processData(),
 const map = L.map('map', { center:[49.18,-0.20], zoom:11 });
 const cvs = L.canvas({ padding:0.5 });
 
-const tileCartoDB = L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  { subdomains:'abcd', maxZoom:19, attribution:'© CartoDB' }
-).addTo(map);
+// Fond « Plan » : OpenFreeMap Positron — tuiles vectorielles, sans clé d'API
+const PLAN_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const PLAN_ATTRIB = "© <a href='https://openfreemap.org/'>OpenFreeMap</a>" +
+                    " © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
 
 const tileIgn = L.tileLayer(
   'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
@@ -1122,10 +1133,72 @@ const tileIgn = L.tileLayer(
     attribution:"Orthophotos © <a href='https://www.ign.fr/'>IGN</a> / Géoplateforme" }
 );
 
-L.control.layers(
-  { '🗺️ Plan (CartoDB)': tileCartoDB, '🛰️ Satellite (IGN)': tileIgn },
+// Plan de secours : même service Géoplateforme que l'orthophoto, sans clé d'API
+const tilePlanIgn = L.tileLayer(
+  'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+  '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image%2Fpng' +
+  '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+  { maxNativeZoom:19, maxZoom:20,
+    attribution:"Plan IGN © <a href='https://www.ign.fr/'>IGN</a> / Géoplateforme" }
+);
+
+// Message discret, temporaire, en bas de la carte
+function mapNotice(msg, ms = 7000) {
+  const el = L.DomUtil.create('div', 'map-notice', map.getContainer());
+  el.textContent = msg;
+  setTimeout(() => el.remove(), ms);
+}
+
+// MapLibre est requis pour les tuiles vectorielles : s'il n'a pas pu être chargé
+// (CDN bloqué, poste hors ligne), on démarre directement sur le Plan IGN raster.
+const tilePlan = (typeof L.maplibreGL === 'function')
+  ? L.maplibreGL({ style: PLAN_STYLE })
+  : null;
+
+const planCourant = tilePlan || tilePlanIgn;
+
+const layersCtl = L.control.layers(
+  { [tilePlan ? '🗺️ Plan (Positron)' : '🗺️ Plan (IGN)']: planCourant,
+    '🛰️ Satellite (IGN)': tileIgn },
   {}, { position:'topright' }
 ).addTo(map);
+
+// Bascule automatique vers le Plan IGN si OpenFreeMap ne répond plus
+let planSwapped = false, planErrors = 0;
+function basculePlanIgn() {
+  if (planSwapped) return;
+  planSwapped = true;
+  const actif = map.hasLayer(tilePlan);
+  layersCtl.removeLayer(tilePlan);
+  if (actif) map.removeLayer(tilePlan);
+  // On réinsère aussi le satellite pour conserver l'ordre Plan puis Satellite
+  layersCtl.removeLayer(tileIgn);
+  layersCtl.addBaseLayer(tilePlanIgn, '🗺️ Plan (IGN)');
+  layersCtl.addBaseLayer(tileIgn, '🛰️ Satellite (IGN)');
+  if (actif) tilePlanIgn.addTo(map);
+  mapNotice('Fond « Plan » indisponible — bascule sur le Plan IGN.');
+}
+
+if (tilePlan) {
+  // Le pont MapLibre ne remonte pas l'option `attribution` au contrôle Leaflet :
+  // on l'ajoute et on la retire à la main au fil des changements de fond.
+  tilePlan.on('add',    () => map.attributionControl.addAttribution(PLAN_ATTRIB));
+  tilePlan.on('remove', () => map.attributionControl.removeAttribution(PLAN_ATTRIB));
+
+  tilePlan.on('add', () => {
+    const gl = tilePlan.getMaplibreMap();
+    if (!gl) return basculePlanIgn();
+    gl.on('error', e => {
+      // Erreur sans sourceId = le style lui-même est injoignable → bascule immédiate.
+      // Avec sourceId = tuiles isolées, on en tolère quelques-unes avant de basculer.
+      if (!e || !e.sourceId) basculePlanIgn();
+      else if (++planErrors >= 4) basculePlanIgn();
+    });
+  });
+}
+
+planCourant.addTo(map);
+if (!tilePlan) mapNotice('MapLibre non chargé — fond « Plan » IGN utilisé.');
 
 // Bordure des points : fine bordure blanche sur fond satellite pour un meilleur contraste
 let markerStroke = { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
