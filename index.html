@@ -1120,8 +1120,8 @@ let rowsByRefer    = new Map();   // REFER -> row (construit dans processData(),
 const map = L.map('map', { center:[49.18,-0.20], zoom:11 });
 const cvs = L.canvas({ padding:0.5 });
 
-// Fond « Plan » : OpenFreeMap Positron — tuiles vectorielles, sans clé d'API
-const PLAN_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+// Fond « Plan » : OpenFreeMap Bright — tuiles vectorielles, sans clé d'API
+const PLAN_STYLE = 'https://tiles.openfreemap.org/styles/bright';
 const PLAN_ATTRIB = "© <a href='https://openfreemap.org/'>OpenFreeMap</a>" +
                     " © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
 
@@ -1158,7 +1158,7 @@ const tilePlan = (typeof L.maplibreGL === 'function')
 const planCourant = tilePlan || tilePlanIgn;
 
 const layersCtl = L.control.layers(
-  { [tilePlan ? '🗺️ Plan (Positron)' : '🗺️ Plan (IGN)']: planCourant,
+  { [tilePlan ? '🗺️ Plan (Bright)' : '🗺️ Plan (IGN)']: planCourant,
     '🛰️ Satellite (IGN)': tileIgn },
   {}, { position:'topright' }
 ).addTo(map);
