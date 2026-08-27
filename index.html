@@ -331,6 +331,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verda
 /* ── MAP ── */
 #mapContainer{flex:1;position:relative;overflow:hidden}
 #map{position:absolute;inset:0}
+/* Ombrage très léger des points sur fond « Plan » (aucun sur satellite,
+   où la bordure blanche assure déjà le contraste) */
+#map.fond-plan .leaflet-overlay-pane canvas{filter:drop-shadow(0 1px 1px rgba(0,0,0,.28))}
 #mapContainer.selection-mode #map{cursor:crosshair}
 #mapContainer.streetview-mode #map{cursor:pointer}
 
@@ -1093,7 +1096,7 @@ const HELP_DESCS = {
   non_traite: 'Adresse n\'ayant pas donné de réponse à l\'enquête de dotation.'
 };
 const DEFAULT_VISIBLE = {
-  livre:true, enquete:true, rouge:true, bleu:true, non_traite:false
+  livre:true, enquete:true, rouge:true, bleu:true, non_traite:true
 };
 
 // ═══════════════════════════════════════════════
@@ -1202,10 +1205,18 @@ if (!tilePlan) mapNotice('MapLibre non chargé — fond « Plan » IGN utilisé.
 
 // Bordure des points : fine bordure blanche sur fond satellite pour un meilleur contraste
 let markerStroke = { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+// L'ombrage n'est appliqué que sur les fonds « Plan » : il détache légèrement
+// les points du dessin de la carte sans alourdir le rendu.
+function majOmbrePoints(surPlan) {
+  map.getContainer().classList.toggle('fond-plan', surPlan);
+}
+majOmbrePoints(true);   // la carte démarre sur un fond « Plan »
 map.on('baselayerchange', e => {
-  markerStroke = (e.layer === tileIgn)
+  const satellite = (e.layer === tileIgn);
+  markerStroke = satellite
     ? { color: '#fff', weight: 0.8 }
     : { color: 'rgba(0,0,0,0.2)', weight: 0.5 };
+  majOmbrePoints(!satellite);
   rebuildMarkers();
 });
 
