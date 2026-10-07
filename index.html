@@ -1166,6 +1166,17 @@ const layersCtl = L.control.layers(
   {}, { position:'topright' }
 ).addTo(map);
 
+// Plan cadastral (Parcellaire Express, Géoplateforme) : surcouche semi-transparente,
+// activable par-dessus le Plan ou le Satellite, sans toucher aux fonds de carte.
+const tileCadastre = L.tileLayer(
+  'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+  '&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&FORMAT=image%2Fpng' +
+  '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+  { maxNativeZoom:19, maxZoom:20, opacity:0.6, zIndex:10,
+    attribution:"Cadastre © <a href='https://www.ign.fr/'>IGN</a> / Géoplateforme" }
+);
+layersCtl.addOverlay(tileCadastre, '📐 Plan cadastral');
+
 // Bascule automatique vers le Plan IGN si OpenFreeMap ne répond plus
 let planSwapped = false, planErrors = 0;
 function basculePlanIgn() {
